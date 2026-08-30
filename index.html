@@ -349,16 +349,16 @@
     <div class="drawer open" id="d_sw">
       <button onclick="toggle('d_sw')"><span>Model switches</span><span class="mark" id="d_sw_m">−</span></button>
       <div class="dbody">
-        <div class="tog"><label>Debt leverage</label><label class="switch"><input type="checkbox" id="t_debt" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Merchant colocation segment</label><label class="switch"><input type="checkbox" id="t_colo" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Corporate G&amp;A (standalone co.)</label><label class="switch"><input type="checkbox" id="t_ga" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Working capital (AR days)</label><label class="switch"><input type="checkbox" id="t_wc" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Exit at EV/EBITDA multiple</label><label class="switch"><input type="checkbox" id="t_exit" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Re-contract at current price</label><label class="switch"><input type="checkbox" id="t_exitcur"><span class="sl"></span></label></div>
-        <div class="tog"><label>Contract price lock (5-yr)</label><label class="switch"><input type="checkbox" id="t_lock" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Rental price erosion</label><label class="switch"><input type="checkbox" id="t_decline" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Utilization ramp-up</label><label class="switch"><input type="checkbox" id="t_util" checked><span class="sl"></span></label></div>
-        <div class="tog"><label>Phased deployment</label><label class="switch"><input type="checkbox" id="t_phase" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_debt"><label>Debt leverage</label><label class="switch"><input type="checkbox" id="t_debt" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_colo"><label>Merchant colocation segment</label><label class="switch"><input type="checkbox" id="t_colo" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_ga"><label>Corporate G&amp;A (standalone co.)</label><label class="switch"><input type="checkbox" id="t_ga" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_wc"><label>Working capital (AR days)</label><label class="switch"><input type="checkbox" id="t_wc" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_exit"><label>Exit at EV/EBITDA multiple</label><label class="switch"><input type="checkbox" id="t_exit" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_exitcur"><label>Re-contract at current price</label><label class="switch"><input type="checkbox" id="t_exitcur"><span class="sl"></span></label></div>
+        <div class="tog" id="tog_lock"><label>Contract price lock (5-yr)</label><label class="switch"><input type="checkbox" id="t_lock" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_decline"><label>Rental price erosion</label><label class="switch"><input type="checkbox" id="t_decline" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_util"><label>Utilization ramp-up</label><label class="switch"><input type="checkbox" id="t_util" checked><span class="sl"></span></label></div>
+        <div class="tog" id="tog_phase"><label>Phased deployment</label><label class="switch"><input type="checkbox" id="t_phase" checked><span class="sl"></span></label></div>
       </div>
     </div>
 
@@ -484,8 +484,8 @@ const DC_GRADE_LIST=[
 
 const F_REV=[
   {k:'gpus',gpuOnly:true,label:'GPUs per server',unit:'#',step:1,info:'GPUs per node. HGX/DGX B300 is 8. Sets GPU-count rounding and per-node power.'},
-  {k:'deployMonths',label:'Deployment period',unit:'months',step:1,tog:'phase',info:'Months to install all GPUs (staged capex). Capacity comes online gradually, not day one.'},
-  {k:'leadMonths',label:'Build lead time',unit:'months (capex→rev)',step:1,tog:'phase',info:'Commissioning gap between spending capex and earning revenue — money out, debt clock running, no income. The deepest part of the Year-1 cash hole.'},
+  {k:'deployMonths',gpuOnly:true,label:'Deployment period',unit:'months',step:1,tog:'phase',info:'Months to install all GPUs (staged capex). Capacity comes online gradually, not day one.'},
+  {k:'leadMonths',gpuOnly:true,label:'Build lead time',unit:'months (capex→rev)',step:1,tog:'phase',info:'Commissioning gap between spending capex and earning revenue — money out, debt clock running, no income. The deepest part of the Year-1 cash hole.'},
   {k:'lockYears',gpuOnly:true,label:'Contract lock period',unit:'years',step:1,tog:'lock',info:'Years the rental price is contractually fixed. The single most important bankability lever — locked revenue is what makes the debt serviceable.'},
   {k:'rentalDecline',gpuOnly:true,label:'Market erosion / yr',unit:'%',step:1,pct:true,tog:'decline',info:'Annual decline in market GPU-hour price as newer silicon ships. Applies after the lock period expires. H100 fell ~40%/yr post-peak.'},
   {k:'utilStart',gpuOnly:true,label:'Utilization — start',unit:'%',step:1,pct:true,tog:'util',info:'Billed hours ÷ available hours in month 1. New clusters ramp from partial fill; 45% reflects early lease-up.'},
@@ -622,7 +622,7 @@ function compute(p,tog){
     revGm[m]=bill[m]*baseRental*Math.pow(1-decline,(m-1)/12);
     revC[m]=useColo?coloMW*1000*p.coloRate*(online[m]/target)*Math.pow(1+p.coloEsc,Math.floor((m-1)/12))*occ:0;
     rev[m]=revG[m]+revC[m];
-    elec[m]=online[m]*pkEff*p.pue*H*p.elec;
+    elec[m]=useGpu?online[m]*pkEff*p.pue*H*p.elec:0; // colo tenants meter their own power
     warr[m]=(m>Math.round((p.warrantyInclYears||0)*12))?(cumS[m]+cumN[m])*p.warrantyPct/12:0; // OEM warranty bundled in node price for the first warrantyInclYears
     oth[m]=(cumS[m]+cumN[m]+cumF[m])*p.otherPct/12*Math.pow(1+p.gaInfl,Math.floor((m-1)/12));
     othF[m]=cumF[m]*p.otherPct/12*Math.pow(1+p.gaInfl,Math.floor((m-1)/12));
@@ -641,7 +641,8 @@ function compute(p,tog){
     ebitda[m]=rev[m]-cashopex[m];
     ebit[m]=ebitda[m]-depr[m];
     dDraw[m]=capex[m]*debtPct;
-    const repaying = m>deployM && m<=deployM+p.debtTenor;
+    const amortStart = road?shellEnd:deployM; // first capacity earning, not a GPU install ramp
+    const repaying = m>amortStart && m<=amortStart+p.debtTenor;
     dRepay[m]=repaying?princPerMo:0;
     const openBal=dBal[m-1];
     dInt[m]=openBal*p.debtRate/12;
@@ -924,16 +925,28 @@ function sensitivity(){
   return html+`</tbody></table><div class="foot">${foot} · each cell reruns the full engine</div>`;
 }
 function scenarios(){
-  const defs={
+  const isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
+  // A landlord has no rental price, utilisation or hardware residual to flex — its
+  // downside is lease rate, occupancy, build cost and O&M.
+  const defs=isGpu?{
     Bear:{rentalMult:0.8, utilSteady:Math.max(0.4,S.utilSteady-0.15), declineAdd:0.10, elecMult:1.2, residAdd:-0.10},
     Base:{rentalMult:1.0, utilSteady:S.utilSteady, declineAdd:0, elecMult:1.0, residAdd:0},
     Bull:{rentalMult:1.2, utilSteady:Math.min(0.95,S.utilSteady+0.08), declineAdd:-0.08, elecMult:0.9, residAdd:0.15},
+  }:{
+    Bear:{rateMult:0.8, occAdd:-0.15, buildMult:1.15, omMult:1.2, escAdd:-0.015},
+    Base:{rateMult:1.0, occAdd:0,     buildMult:1.0,  omMult:1.0, escAdd:0},
+    Bull:{rateMult:1.2, occAdd:0.07,  buildMult:0.92, omMult:0.9, escAdd:0.01},
   };
   const res={};
   for(const k in defs){const d=defs[k];
-    res[k]=compute({...S, rental:S.rental*d.rentalMult, utilSteady:d.utilSteady,
-      rentalDecline:Math.max(0,S.rentalDecline+d.declineAdd), elec:S.elec*d.elecMult,
-      residualPct:Math.max(0,Math.min(0.5,S.residualPct+d.residAdd))}, T);}
+    res[k]=isGpu
+      ? compute({...S, rental:S.rental*d.rentalMult, utilSteady:d.utilSteady,
+          rentalDecline:Math.max(0,S.rentalDecline+d.declineAdd), elec:S.elec*d.elecMult,
+          residualPct:Math.max(0,Math.min(0.5,S.residualPct+d.residAdd))}, T)
+      : compute({...S, coloRate:S.coloRate*d.rateMult,
+          occupancy:Math.max(0.3,Math.min(1,S.occupancy+d.occAdd)),
+          facilityPerMW:S.facilityPerMW*d.buildMult, otherPct:S.otherPct*d.omMult,
+          coloEsc:Math.max(0,S.coloEsc+d.escAdd)}, T);}
   const rows=[
     ['Project IRR',k=>irrf(res[k].pIRR)],
     [T.debt?'Equity IRR':'Equity IRR (debt off)',k=>T.debt?irrf(res[k].eIRR):'—'],
@@ -947,7 +960,9 @@ function scenarios(){
   let html=`<table><thead><tr><th>Metric</th>`+
     cols.map(c=>`<th style="color:${colcol[c]}">${c}</th>`).join('')+`</tr></thead><tbody>`;
   rows.forEach(([lb,fn])=>{html+=`<tr><td>${lb}</td>`+cols.map(c=>`<td>${fn(c)}</td>`).join('')+`</tr>`;});
-  return html+`</tbody></table><div class="foot">Bear: −20% price, −15pt util, +10pt erosion, +20% power, −10pt residual · Bull: +20% price, +8pt util, −8pt erosion, −10% power, +15pt residual (H100-style scarcity playbook)</div>`;
+  return html+`</tbody></table><div class="foot">${isGpu
+    ?'Bear: −20% price, −15pt util, +10pt erosion, +20% power, −10pt residual · Bull: +20% price, +8pt util, −8pt erosion, −10% power, +15pt residual (H100-style scarcity playbook)'
+    :'Bear: −20% lease rate, −15pt occupancy, +15% build cost, +20% O&amp;M, −1.5pt escalation · Bull: +20% lease rate, +7pt occupancy, −8% build cost, −10% O&amp;M, +1pt escalation'}</div>`;
 }
 
 /* ═══════════════ verdict ═══════════════ */
@@ -1040,7 +1055,7 @@ function render(){
     <div class="h">Where each ${o.useTaas?'token':o.useGpu?'rental':'lease'} dollar goes — per ${o.useGpu?'GPU-hour':'kW / month'}</div>
     ${dollarBar(o,o.unitPrice)}
     ${dollarTable(o)}
-    <div class="foot">cyan family = compute layer (servers) · amber family = power &amp; facility layer</div>
+    <div class="foot">${o.useGpu?'cyan family = compute layer (servers) · amber family = power &amp; facility layer':'every line is a facility cost — the lease price carries depreciation, development, ground rent, O&amp;M and overhead'}</div>
   </div>
 
   <div class="card">
@@ -1084,11 +1099,11 @@ function render(){
   <div class="card">
     <div class="h">Annual P&amp;L — cluster</div>
     <table><thead><tr><th>$</th>${o.yrs.map(y=>`<th>Y${y.y}</th>`).join('')}<th style="color:var(--power)">Total</th></tr></thead><tbody>
-      ${o.useColo?plRow('GPU rental revenue',o.yrs.map(y=>y.revG)):''}
+      ${o.useGpu&&o.useColo?plRow('GPU rental revenue',o.yrs.map(y=>y.revG)):''}
       ${o.useColo?plRow('Colocation revenue',o.yrs.map(y=>y.revC)):''}
       ${plRow(o.useColo?'Total revenue':'Revenue',o.yrs.map(y=>y.rev),o.useColo)}
-      ${plRow('Electricity',o.yrs.map(y=>-y.elec))}
-      ${plRow('Warranty & support',o.yrs.map(y=>-y.warr))}
+      ${o.useGpu?plRow('Electricity',o.yrs.map(y=>-y.elec)):''}
+      ${o.useGpu?plRow('Warranty & support',o.yrs.map(y=>-y.warr)):''}
       ${o.yrs.some(y=>y.trans>0)?plRow('Network transit',o.yrs.map(y=>-y.trans)):''}
       ${plRow('IDC O&M',o.yrs.map(y=>-y.oth))}
       ${plRow(o.useFac?'Site ground rent':'Colocation fees',o.yrs.map(y=>-y.rent))}
@@ -1101,8 +1116,8 @@ function render(){
       ${plRow('Tax',o.yrs.map(y=>-y.tax))}
       ${plRow('Net profit',o.yrs.map(y=>y.ni),true)}
       <tr><td style="color:var(--dim)">Net margin</td>${o.yrs.map(y=>{const m=y.rev>0?y.ni/y.rev:null;return `<td style="color:${m==null?'var(--dim)':m<0?'var(--fail)':'var(--dim)'}">${m==null?'—':(m*100).toFixed(1)+'%'}</td>`;}).join('')}<td style="color:${o.totNI/o.totRev<0?'var(--fail)':'var(--power)'}">${o.totRev>0?(o.totNI/o.totRev*100).toFixed(1)+'%':'—'}</td></tr>
-      <tr><td style="color:var(--dim)">${o.useTaas?'Avg blended $/GPU-hr':'Avg rental $/GPU-hr'}</td>${o.yrs.map(y=>`<td style="color:var(--dim)">${y.price.toFixed(2)}</td>`).join('')}<td style="color:var(--dim)">—</td></tr>
-      <tr><td style="color:var(--dim)">Utilization</td>${o.yrs.map(y=>`<td style="color:var(--dim)">${(y.util*100).toFixed(0)}%</td>`).join('')}<td style="color:var(--dim)">—</td></tr>
+      ${o.useGpu?`<tr><td style="color:var(--dim)">${o.useTaas?'Avg blended $/GPU-hr':'Avg rental $/GPU-hr'}</td>${o.yrs.map(y=>`<td style="color:var(--dim)">${y.price.toFixed(2)}</td>`).join('')}<td style="color:var(--dim)">—</td></tr>`:''}
+      ${o.useGpu?`<tr><td style="color:var(--dim)">Utilization</td>${o.yrs.map(y=>`<td style="color:var(--dim)">${(y.util*100).toFixed(0)}%</td>`).join('')}<td style="color:var(--dim)">—</td></tr>`:''}
     </tbody></table>
   </div>
 
@@ -1116,13 +1131,13 @@ function render(){
       ${T.debt?plRow('Debt drawdown',o.yrs.map(y=>y.draw)):''}
       ${T.debt?plRow('Principal repayments',o.yrs.map(y=>-y.repay)):''}
       ${plRow('Free cash flow to equity',o.yrs.map(y=>y.fcfe),true)}
-      ${plRow('Hardware resale + WC',o.yrs.map((y,i)=>i===o.yrs.length-1?o.termProj:0))}
+      ${plRow(o.useGpu?'Hardware resale + WC':'Facility residual + WC',o.yrs.map((y,i)=>i===o.yrs.length-1?o.termProj:0))}
       <tr><td style="color:var(--dim)">Cumulative equity cash</td>${cums.map(v=>`<td style="color:${v<0?'var(--fail)':'var(--dim)'}">${money(v)}</td>`).join('')}<td style="color:var(--dim)">—</td></tr>
     </tbody></table>
-    <div class="foot">Terminal ${money(o.termProj)} (hardware resale + working-capital release) lands in month ${o.N} — shown in the final-year row, folded into cumulative, and already in the IRR. Cumulative trough ≈ the peak equity need shown above.</div>
+    <div class="foot">Terminal ${money(o.termProj)} (${o.useGpu?'hardware resale':'facility net book value'} + working-capital release) lands in month ${o.N} — shown in the final-year row, folded into cumulative, and already in the IRR. Cumulative trough ≈ the peak equity need shown above.</div>
   </div>`;})()}
 
-  ${o.useFac?(()=>{
+  ${o.useFac&&o.useGpu?(()=>{
     const T5=(f)=>o.yrs.reduce((s,y)=>s+f(y),0);
     const dcRev=T5(y=>y.revC+y.intR), dcCost=T5(y=>y.rent+y.othF), dcEb=dcRev-dcCost;
     const gRev=T5(y=>y.revG), gCost=T5(y=>y.intR+y.elec+y.warr+(y.oth-y.othF)+y.ga), gEb=gRev-gCost;
@@ -1146,7 +1161,7 @@ function render(){
   </div>
 
   <div class="foot">
-    Monthly engine over ${o.N} months. Two capital layers: servers depreciate to ${(S.residualPct*100).toFixed(0)}% residual over the hold; facility over ${S.facilityLife} yrs, exiting at net book value. One-time development &amp; professional fees (land, business case, design, development management) are capitalised at kick-off and depreciated over the same facility life; they are excluded from the O&amp;M base. ${o.useWC?`Working capital holds ${S.arDays} days of revenue in receivables${o.useExit?'':' (released at liquidation exit)'}. `:''}${T.debt?`Debt drawn pro-rata with deployment, equal-principal amortization; ${(S.feePct*100).toFixed(2)}% arrangement fee expensed at kick-off. `:''}Exit: ${o.useExit?`going-concern at ${S.exitMult}x LTM EBITDA (buyer assumes working capital)`:'liquidation — hardware residual + facility NBV'}. Equity IRR is levered FCFE net of exit debt. Sensitivity and scenario cells rerun the full engine. Decision tool, not investment advice.
+    Monthly engine over ${o.N} months. ${o.useGpu?`Two capital layers: servers depreciate to ${(S.residualPct*100).toFixed(0)}% residual over the hold; facility over ${S.facilityLife} yrs, exiting at net book value.`:`The facility depreciates over ${S.facilityLife} yrs and exits at net book value; capacity arrives on the build roadmap, with the shell built once for the whole site and fit-out following each tranche.`} One-time development &amp; professional fees (land, business case, design, development management) are capitalised at kick-off and depreciated over the same facility life; they are excluded from the O&amp;M base. ${o.useWC?`Working capital holds ${S.arDays} days of revenue in receivables${o.useExit?'':' (released at liquidation exit)'}. `:''}${T.debt?`Debt drawn pro-rata with capex, equal-principal amortization from ${o.useGpu?'the end of the install ramp':'first capacity handover'}; ${(S.feePct*100).toFixed(2)}% arrangement fee expensed at kick-off. `:''}Exit: ${o.useExit?`going-concern at ${S.exitMult}x LTM EBITDA (buyer assumes working capital)`:(o.useGpu?'liquidation — hardware residual + facility NBV':'liquidation — facility net book value')}. Equity IRR is levered FCFE net of exit debt. Sensitivity and scenario cells rerun the full engine. Decision tool, not investment advice.
   </div>`;
   document.getElementById('rentNote').textContent='start · ≈'+money(o.rentMo)+'/GPU/mo';
   document.getElementById('srvNote').textContent=S.servers.toLocaleString()+' × 8-GPU nodes · '+o.gpuMW.toFixed(2)+' MW IT';
@@ -1316,7 +1331,7 @@ function setProduct(id){
   OV_KEYS.forEach(k=>{if(k in DEF)S[k]=DEF[k];});
   Object.assign(S, prod.ov);
   // show/hide GPU-specific core inputs for PropCo-only products
-  ['serverPrice','gpuCount','netPct','powerKW','rental','elec'].forEach(k=>{
+  ['serverPrice','gpuCount','netPct','powerKW','netPowerKW','rental','elec'].forEach(k=>{
     const el=document.getElementById(k); if(!el)return;
     const drv=el.closest('.drv'); if(drv)drv.style.display=prod.gpu?'':'none';
   });
@@ -1329,6 +1344,10 @@ function setProduct(id){
   if(taas)renderModes();
   if(prod.gpu)applyGpuFacility();               // GPU halls follow the installed model
   else{MIX={...MIX_DEF}; applyMix();}          // PropCo halls are built from the capacity mix
+  // switches that only steer GPU economics have nothing to say about a landlord
+  ['colo','lock','decline','util','phase','exitcur'].forEach(k=>{
+    const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
+  });
   setSpvFromProduct(prod);
   if(!prod.gpu)syncRoadmap();
   renderRoadmap();
