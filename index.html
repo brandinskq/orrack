@@ -654,7 +654,10 @@ function compute(p,tog){
   const totalCapex=(useGpu?target*p.serverPrice*(1+p.netPct):0)+facTotal+psTotal;
   const netCapex=useGpu?target*p.serverPrice*p.netPct:0;
   const totalDebt=totalCapex*debtPct;
-  const princPerMo=totalDebt/Math.max(1,p.debtTenor);
+  // Capitalised construction interest means the balance at conversion is larger than
+  // the original commitment, so amortising the commitment leaves a stub outstanding.
+  // The term loan amortises whatever converts.
+  let convBal=null, princPerMo=totalDebt/Math.max(1,p.debtTenor);
   let accDeprS=0,accDeprN=0,accDeprF=0,accDeprP=0,accDeprPG=0;
 
   for(let m=1;m<=N;m++){
@@ -728,7 +731,8 @@ function compute(p,tog){
     // charges full principal against a fraction of the revenue.
     const amortStart = road?Math.max(...road.map(r=>Math.round(r.m||1))):deployM;
     const repaying = m>amortStart && m<=amortStart+p.debtTenor;
-    dRepay[m]=repaying?princPerMo:0;
+    if(m===amortStart+1){convBal=dBal[m-1]; princPerMo=convBal/Math.max(1,p.debtTenor);}
+    dRepay[m]=repaying?Math.min(princPerMo,dBal[m-1]+dDraw[m]):0;
     const openBal=dBal[m-1];
     dInt[m]=openBal*p.debtRate/12;
     // Standard project-finance practice, and the only way DSCR means anything before
