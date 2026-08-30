@@ -432,7 +432,7 @@ const DEF={
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.025,
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.20, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
-  gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000,
+  gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000, renewUplift:0.10,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25, usableIT:0.80,
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
@@ -490,11 +490,11 @@ let GPU='b300'; // current model id
 /* each product = a switch preset + default overrides. Engine unchanged. */
 const PRODUCTS=[
   {id:'datahall', name:'Data Hall / MW', sub:'self-built AI DC leased out by the MW — PropCo landlord, no GPUs',
-   spv:'AI DC', tog:{facility:true, colo:true, debt:true, exit:true}, gpu:false,
+   spv:'AI DC', tog:{facility:true, colo:true, debt:true, exit:false}, gpu:false,
    // A stabilised campus is sold as a going concern, not liquidated at book value;
    // costs track Saudi wage growth, not 8%/yr; project debt is termed to the asset,
    // not to a GPU refresh cycle; maintenance tracks plant, not the price paid for it.
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, exitMult:15, gaInfl:0, debtTenor:120}},
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, gaInfl:0, debtTenor:120, years:20}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
    spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true, exit:false}, gpu:true,
    ov:{}},
@@ -554,6 +554,7 @@ const F_REV=[
   {k:'usableIT',propcoOnly:true,label:'Usable IT load',unit:'% of campus power',step:5,pct:true,info:'Share of campus power that reaches the white space as leasable IT load; the rest is cooling, electrical losses and back-of-house. The roadmap is scheduled in MW IT, so this works the other way round: it derives how much campus power the site has to draw to deliver that load. Every rate in the model — build cost, O&M, development fees, lease price — is per MW IT.'},
   {k:'coloMW',roadmapDriven:true,label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
   {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Set by the capacity mix: $250/kW/mo for general-purpose colo, rising with power density.'},
+  {k:'renewUplift',propcoOnly:true,label:'Renewal uplift',unit:'% at re-lease',step:1,pct:true,tog:'colo',info:'One-time step-up in the lease rate when the initial term expires and space is re-let at market. Digital Realty booked cash renewal spreads of +6.1% to +8.0% through 2025, and close to +20% in its hyperscale segment; annual escalation continues on top of this. Set 0 to renew flat.'},
   {k:'coloLeaseYears',label:'Colo lease term',unit:'years',step:1,tog:'colo',info:'Colo tenant lease length. 10yr+ is standard and lets the remaining lease be valued as a resale asset at exit.'},
   {k:'coloEsc',label:'Colo rate escalation',unit:'% / yr',step:0.5,pct:true,tog:'colo',info:'Annual rent bump written into long colo leases. 2-3%/yr typical.'},
 ];
@@ -684,7 +685,10 @@ function compute(p,tog){
     bill[m]=useGpu?online[m]*gpus*H*util[m]:0;
     revG[m]=bill[m]*price[m];
     revGm[m]=bill[m]*baseRental*Math.pow(1-decline,(m-1)/12);
-    revC[m]=useColo?coloMW*1000*p.coloRate*(online[m]/target)*Math.pow(1+p.coloEsc,Math.floor((m-1)/12))*occ:0;
+    // leases re-mark to market once the initial term expires; escalation continues on top
+    const renewM=Math.round((p.coloLeaseYears||0)*12);
+    const renew=(renewM>0&&m>renewM)?(1+(p.renewUplift||0)):1;
+    revC[m]=useColo?coloMW*1000*p.coloRate*(online[m]/target)*Math.pow(1+p.coloEsc,Math.floor((m-1)/12))*occ*renew:0;
     rev[m]=revG[m]+revC[m];
     elec[m]=useGpu?online[m]*pkEff*p.pue*H*p.elec:0; // colo tenants meter their own power
     warr[m]=(m>Math.round((p.warrantyInclYears||0)*12))?(cumS[m]+cumN[m])*p.warrantyPct/12:0; // OEM warranty bundled in node price for the first warrantyInclYears
