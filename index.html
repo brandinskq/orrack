@@ -464,8 +464,8 @@ const OV_KEYS=[...new Set(PRODUCTS.flatMap(p=>Object.keys(p.ov||{})))];
 /* Data-hall capacity types — the hall is a weighted blend of these, applied in PropCo modes */
 const DC_GRADES={
   A:{facilityPerMW:11e6,     pue:1.45,coloRate:250,rackKW:15},
-  B:{facilityPerMW:13.75e6,  pue:1.35,coloRate:328,rackKW:45},
-  D:{facilityPerMW:23.375e6, pue:1.18,coloRate:656,rackKW:200}
+  B:{facilityPerMW:14e6,     pue:1.35,coloRate:328,rackKW:45},
+  D:{facilityPerMW:24e6,     pue:1.18,coloRate:656,rackKW:200}
 };
 /* default capacity split of the hall — shares are normalised, so they need not sum to 100 */
 const MIX_DEF={A:0.20,B:0.60,D:0.20};
