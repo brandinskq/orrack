@@ -438,7 +438,7 @@ const DEF={
   servers:128, gpus:8, deployMonths:3, leadMonths:2, lockYears:5,
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.025,
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
-  powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.20, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
+  powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.80, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000, renewUplift:0.10,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25, usableIT:0.80,
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
@@ -569,7 +569,7 @@ const F_COST=[
   {custom:'buildRates',propcoOnly:true,label:'IDC / facility build'},
   {k:'shellPct',propcoOnly:true,label:'— of which shell, up-front',unit:'% of the build above',step:5,pct:true,tog:'facility',info:'Timing only — this adds no cost. The build cost above is all-in; this splits it across time. The shell share (land works, structure, envelope, primary power route) has to be built once for the whole site before any MW earns, while the remainder (power train, cooling, white space) is fitted out tranche by tranche as the roadmap delivers. Move this and the total capex does not change, only the year it lands in.'},
   {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20-25yr.'},
-  {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'GPU server resale value at exit, as % of purchase price. H100 held 35-50% at 3yr; 40% is reasonable for a 3yr-old GPU given compute scarcity.'},
+  {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'GPU server resale value at exit, as % of purchase price. Secondary-market data puts a 2-year-old H100 near 61% of original and a 3-year-old at 45-60%, with used A100s spanning 60-80%; CoreWeave has re-booked 2022 H100s at 95% of original contract pricing. A figure at the top of that range is a scarcity call, not a depreciation curve — it assumes the compute shortage outlasts the hold.'},
   {k:'netResidualPct',gpuOnly:true,label:'Network resale value',unit:'% at exit',step:1,pct:true,info:'Resale value of switches/optics/cabling at exit, as % of purchase price — lower than GPUs. A 3yr-old fabric blends switches ~25-35%, optics ~10-25%, cabling ~5-15%; ~20% is a sensible blend.'},
   {section:'OPEX — recurring'},
   {k:'pue',gpuOnly:true,label:'PUE',unit:'x',step:0.05,info:'Power Usage Effectiveness — total facility power ÷ IT power. Air-cooled ~1.4-1.5; liquid-cooled ~1.2-1.3. Multiplies the electricity bill.'},
