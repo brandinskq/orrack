@@ -574,9 +574,7 @@ const F_COST=[
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty already bundled in the node purchase price — no separate support charge during this window. Enterprise HGX systems ship with 3yr. The Warranty & support rate applies only after this period expires.'},
   {k:'otherPct',gpuOnly:true,label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year, escalating at the O&M inflation rate.'},
   {k:'omPerMWYr',propcoOnly:true,label:'IDC O&M',unit:'$M / MW IT / yr',step:0.1,scale:1e6,info:'All-in operating cost per MW of IT capacity under management: on-site engineers, NOC, M&E maintenance, security, insurance — and, on this product, ground rent and corporate overhead too, which is why those two lines are zeroed rather than charged again. Escalates at the O&M inflation rate. Excludes electricity: the end user meters and pays power directly.'},
-  {k:'gaPct',label:'Company opex + platform',labelPropco:'Corporate overhead',unit:'% of revenue',step:1,pct:true,tog:'ga',
-   info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.',
-   infoPropco:'Corporate overhead — management, leasing &amp; sales, admin, finance, as % of revenue. A landlord runs no software platform, and site engineers, NOC and M&amp;E maintenance are not here either; they sit in IDC O&amp;M. Working range for a pure IDC is 3-5%: Digital Realty, a listed global REIT across ~300 sites, carries G&amp;A near 8.6% of revenue, a ceiling rather than a target for a single-campus SPV.'},
+  {k:'gaPct',gpuOnly:true,label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.'},
   {k:'gaInfl',label:'O&M / salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in the O&M line, driven mainly by salary escalation. Saudi CPI ran 2.03% in 2025 and 1.8-1.9% through 2026; site engineers, NOC and security cost more than headline CPI in a market building out this fast, so 3% carries a point of wage premium. Watch it against the lease escalator: the gap between the two compounds against the margin over a 20-year hold.'},
   {section:'Tax'},
   {k:'saudiPct',label:'Saudi / GCC ownership',unit:'%',step:5,pct:true,info:'Share of equity held by Saudi/GCC owners. Effective tax = ownership × 2.5% (Zakat) + (1−ownership) × 20% (foreign CIT). Zakat is technically levied on the Zakat base (net worth), approximated here on profit. 100% Saudi ⇒ 2.5% effective; 0% ⇒ 20%.'},
@@ -1435,7 +1433,7 @@ function setProduct(id){
   // it can choose, and switching facility off would empty the whole model
   const idc=document.getElementById('drv_idc'); if(idc)idc.style.display=prod.gpu?'':'none';
   // switches that only steer GPU economics have nothing to say about a landlord
-  ['colo','lock','decline','util','phase','exitcur'].forEach(k=>{
+  ['colo','lock','decline','util','phase','exitcur','ga'].forEach(k=>{
     const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
   });
   syncToggles();
