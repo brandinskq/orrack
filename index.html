@@ -171,6 +171,12 @@
   .switch input:checked+.sl{background:rgba(79,107,0,.13);border-color:var(--compute-dim)}
   .switch input:checked+.sl:before{transform:translateX(17px);background:var(--compute)}
   @media (max-width:900px){.rail{width:100%}}
+  /* the 12-column tables outgrow the main column well before phone width; let them
+     scroll inside their card instead of pushing the whole page sideways */
+  @media (max-width:1200px){
+    .card table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+    .card .modet{white-space:normal}
+  }
   /* ── mobile / small screens ───────────────── */
   @media (max-width:640px){
     body{padding:0 11px 22px}
@@ -1451,35 +1457,56 @@ function renderRoadmap(){
 }
 /* Cumulative MW as a staircase, each bar split by the capacity mix — the mix bar
    above says what a MW is, this says when it arrives. */
-function roadChart(){
+function roadChart(W){
   const road=(S.roadmap||[]).slice().sort((a,b)=>(a.m||0)-(b.m||0));
   if(!road.length)return '';
   const tot=road.reduce((t,r)=>t+Math.max(0,r.mw||0),0);
   if(tot<=0)return '';
-  const W=1000,H=118,padL=6,padR=10,padT=18,padB=26;
-  const n=road.length, gap=(W-padL-padR)/n, bw=Math.min(30,gap*0.66);
-  const plot=H-padT-padB;
-  const w=mixWeights();
-  let bars='',ticks='',cum=0;
+  // drawn at the container's real pixel width: stretching a viewBox to fit would
+  // distort every label along with the shapes
+  const H=150,padL=40,padR=66,padT=18,padB=26;
+  const lastM=Math.max(...road.map(r=>Math.round(r.m)||1));
+  const X=m=>padL+(m/lastM)*(W-padL-padR);
+  const Y=v=>H-padB-(v/tot)*(H-padT-padB);
+
+  const walk=k=>{const pts=[[padL,0]];let cum=0;
+    road.forEach(r=>{const x=X(Math.round(r.m));
+      pts.push([x,cum*k]); cum+=Math.max(0,r.mw||0); pts.push([x,cum*k]);});
+    pts.push([W-padR,cum*k]); return pts;};
+  const fwd=k=>walk(k).map(([x,v],i)=>`${i?'L':'M'}${x.toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+  const rev=k=>walk(k).reverse().map(([x,v])=>`L${x.toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+
+  let lo=0,bands='';
+  mixWeights().forEach(seg=>{const hi=lo+seg.w;
+    if(seg.w>0.001)bands+=`<path d="${fwd(hi)} ${rev(lo)} Z" fill="${MIX_CC[seg.k]}" fill-opacity=".92"/>`;
+    lo=hi;});
+
+  const stepMW=tot>=120?50:(tot>=60?25:10);
+  let grid='';
+  for(let v=stepMW;v<=tot;v+=stepMW)
+    grid+=`<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#e4e7ec"/>`
+        + `<text x="${padL-8}" y="${(Y(v)+3.5).toFixed(1)}" fill="#6f7885" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">${v}</text>`;
+
+  let ticks='',cum=0;
   road.forEach((r,i)=>{
     cum+=Math.max(0,r.mw||0);
-    const x=padL+i*gap+(gap-bw)/2;
-    let y=H-padB;
-    w.forEach(seg=>{
-      const h=(cum*seg.w/tot)*plot;
-      if(h<=0.2)return;
-      y-=h;
-      bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${MIX_CC[seg.k]}"/>`;
-    });
-    const yr=String(r.k).slice(0,4);
-    const isYearEnd = (i===n-1) || String(road[i+1].k).slice(0,4)!==yr;
-    if(isYearEnd){
-      ticks+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" fill="#111318" font-size="10.5" font-weight="600" font-family="ui-monospace,monospace" text-anchor="middle">${cum}</text>`+
-             `<text x="${(x+bw/2).toFixed(1)}" y="${H-8}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">${yr}</text>`;
+    const yr=String(r.k).slice(0,4), last=i===road.length-1;
+    if(last||String(road[i+1].k).slice(0,4)!==yr){
+      const x=X(Math.round(r.m));
+      ticks+=`<line x1="${x.toFixed(1)}" y1="${(H-padB).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(H-padB+4).toFixed(1)}" stroke="#ccd2db"/>`
+           + `<text x="${x.toFixed(1)}" y="${H-8}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">${yr}</text>`;
+      // the final total is called out at the right edge, so skip it here
+      if(!last)ticks+=`<text x="${x.toFixed(1)}" y="${(Y(cum)-7).toFixed(1)}" fill="#111318" font-size="10" font-weight="600" font-family="ui-monospace,monospace" text-anchor="middle">${cum}</text>`;
     }
   });
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">`+
-    `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#ccd2db"/>${bars}${ticks}</svg>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`+
+    grid+bands+
+    `<line x1="${padL}" y1="${(H-padB).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db"/>`+
+    ticks+
+    `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+3).toFixed(1)}" fill="#111318" font-size="15" font-weight="700" font-family="ui-monospace,monospace">${tot}</text>`+
+    `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+16).toFixed(1)}" fill="#6f7885" font-size="9" letter-spacing="1" font-family="ui-monospace,monospace">MW IT</text>`+
+    `</svg>`;
 }
 function renderRoadChart(){
   const bar=document.getElementById('roadBar'); if(!bar)return;
@@ -1490,8 +1517,8 @@ function renderRoadChart(){
   const tot=road.reduce((t,r)=>t+Math.max(0,r.mw||0),0);
   const lastYr=road.length?String(road[road.length-1].k).slice(0,4):'';
   bar.innerHTML=`<div class="roadhead"><span class="mlabel">Build roadmap</span>`+
-    `<span class="roadnote">${tot} MW by ${lastYr} · cumulative capacity, stacked by the mix above · `+
-    `shell built once for the whole site, fit-out per tranche</span></div>${roadChart()}`;
+    `<span class="roadnote">${tot} MW by ${lastYr} · cumulative capacity, stacked by capacity type</span></div>`+
+    roadChart(Math.max(560, Math.round(bar.clientWidth||1000)));
 }
 function roadFoot(){
   const tot=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
@@ -1615,6 +1642,7 @@ buildGroup('body_rev',F_REV);
 buildGroup('body_cost',F_COST);
 buildGroup('body_fin',F_FIN);
 setProduct(PROD); // applies the default product's preset, then renders
+let _roadRz; addEventListener('resize',()=>{clearTimeout(_roadRz);_roadRz=setTimeout(renderRoadChart,150);});
 </script>
 </body>
 </html>
