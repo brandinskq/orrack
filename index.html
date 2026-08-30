@@ -1510,7 +1510,12 @@ function roadChart(W){
         padL=narrow?28:40, padR=narrow?14:66, padT=18, padB=28;
   const lastM=Math.max(...road.map(r=>Math.round(r.m)||1));
   const firstM=Math.min(...road.map(r=>Math.round(r.m)||1));
-  const X=m=>padL+(m/lastM)*(W-padL-padR);
+  // The build-out year is a phase, not a quarter of the story: give it a fixed
+  // gutter and spend the rest of the plot on the years that actually deliver MW.
+  // The dashed divider marks where the two zones meet.
+  const gut=padL+(W-padL-padR)*0.12;
+  const X=m=>m<=firstM ? padL+(m/Math.max(1,firstM))*(gut-padL)
+                       : gut+((m-firstM)/Math.max(1,lastM-firstM))*(W-padR-gut);
   const Y=v=>H-padB-(v/tot)*(H-padT-padB);
 
   const walk=k=>{const pts=[[padL,0]];let cum=0;
