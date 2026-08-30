@@ -383,7 +383,7 @@ function taasBlended(p){ // fleet-weighted blended $/GPU-hour across modalities
   (p.modes||[]).forEach(m=>{mixSum+=m.mix; rev+=m.mix*modeRevPerHr(m);});
   return {rental: mixSum>0?rev/mixSum:0};
 }
-const TOG={debt:false, decline:true, util:false, phase:true, facility:true, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:true};
+const TOG={debt:false, decline:true, util:false, phase:true, facility:false, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:false};
 let S={...DEF, modes:DEF.modes.map(m=>({...m}))}, T={...TOG};
 
 /* ═══════════════ GPU model catalogue (turnkey landed prices, mid-2026) ═══════════════ */
@@ -404,17 +404,17 @@ let GRADE='A'; // current AI DC grade (default A)
 /* ═══════════════ product definitions ═══════════════ */
 /* each product = a switch preset + default overrides. Engine unchanged. */
 const PRODUCTS=[
-  {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
-   tog:{facility:true, colo:true, debt:false}, gpu:true,
-   ov:{}},
   {id:'datahall', name:'Data Hall / MW', sub:'self-built AI DC leased out by the MW — PropCo landlord, no GPUs',
    tog:{facility:true, colo:true, debt:false}, gpu:false,
    ov:{coloMW:10, coloRate:180, years:10}},
+  {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
+   tog:{facility:true, colo:true, debt:false}, gpu:true,
+   ov:{}},
   {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
    tog:{facility:true, colo:false, debt:false}, gpu:true, taas:true,
    ov:{}},
 ];
-let PROD='ownbuild';
+let PROD='datahall';
 let CUST='domestic'; // VAT customer type: 'domestic' (15%) | 'export' (0%, zero-rated services)
 const VAT_RATES={domestic:0.15, export:0};
 /* keys any product preset overrides — reset these to DEF on product switch so a prior preset (e.g. GPU-aaS util 75%) doesn't leak into the next */
@@ -1295,7 +1295,7 @@ setCustomer(CUST);
 buildGroup('body_rev',F_REV);
 buildGroup('body_cost',F_COST);
 buildGroup('body_fin',F_FIN);
-render();
+setProduct(PROD); // applies the default product's preset, then renders
 </script>
 </body>
 </html>
