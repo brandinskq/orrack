@@ -331,7 +331,7 @@
           <div class="val"><input type="number" id="occupancy" step="5"><span class="unit">%</span></div></div>
         <input type="range" id="occupancy_r" min="40" max="100" step="5">
       </div>
-      <div class="drv">
+      <div class="drv" id="drv_idc">
         <div class="row rowstack"><label>IDC strategy<span class="hint">own-build capex vs lease colocation</span></label>
           <div class="modeseg"><button id="mode_build" class="modebtn" onclick="setIdcMode(true)">Own-build</button><button id="mode_lease" class="modebtn" onclick="setIdcMode(false)">Lease / colocation</button></div>
         </div>
@@ -1348,6 +1348,9 @@ function setProduct(id){
   if(taas)renderModes();
   if(prod.gpu)applyGpuFacility();               // GPU halls follow the installed model
   else{MIX={...MIX_DEF}; RATES={...RATE_DEF}; applyMix(); renderLeaseRates();} // PropCo halls price the mix
+  // a landlord IS the colocation provider — renting space from one is not a strategy
+  // it can choose, and switching facility off would empty the whole model
+  const idc=document.getElementById('drv_idc'); if(idc)idc.style.display=prod.gpu?'':'none';
   // switches that only steer GPU economics have nothing to say about a landlord
   ['colo','lock','decline','util','phase','exitcur'].forEach(k=>{
     const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
