@@ -303,7 +303,7 @@
         <div id="modeTable"></div>
       </div>
       <div class="drv" id="leaseRow" style="display:none">
-        <div class="row"><label>Lease rate — to tenants<span class="hint">per kW committed / month</span><span class="ttip" data-tip="Monthly lease rate charged to tenants per kW of committed IT capacity, excl. metered power (tenants pay their own electricity). Market retail $150-215/kW/mo. Escalates yearly by the colo escalation rate.">ⓘ</span></label>
+        <div class="row"><label>Lease rate — to tenants<span class="hint">per kW committed / month</span><span class="ttip" data-tip="Monthly lease rate charged to tenants per kW of committed IT capacity, excl. metered power (tenants pay their own electricity). Blended from the capacity mix — general-purpose colo anchors at $250/kW/mo and denser AI capacity carries a premium. Escalates yearly by the colo escalation rate.">ⓘ</span></label>
           <div class="val"><input type="number" id="coloRate" step="10"><span class="unit">$ / kW·mo</span></div></div>
         <input type="range" id="coloRate_r" min="80" max="400" step="10">
       </div>
@@ -435,9 +435,9 @@ const VAT_RATES={domestic:0.15, export:0};
 const OV_KEYS=[...new Set(PRODUCTS.flatMap(p=>Object.keys(p.ov||{})))];
 /* Data-hall capacity types — the hall is a weighted blend of these, applied in PropCo modes */
 const DC_GRADES={
-  A:{facilityPerMW:8e6,pue:1.45,coloRate:160,rackKW:15},
-  B:{facilityPerMW:10e6,pue:1.35,coloRate:210,rackKW:45},
-  D:{facilityPerMW:17e6,pue:1.18,coloRate:420,rackKW:200}
+  A:{facilityPerMW:8e6,pue:1.45,coloRate:250,rackKW:15},
+  B:{facilityPerMW:10e6,pue:1.35,coloRate:328,rackKW:45},
+  D:{facilityPerMW:17e6,pue:1.18,coloRate:656,rackKW:200}
 };
 /* default capacity split of the hall — shares are normalised, so they need not sum to 100 */
 const MIX_DEF={A:0.20,B:0.60,D:0.20};
@@ -460,7 +460,7 @@ const F_REV=[
   {k:'utilRamp',gpuOnly:true,label:'Utilization ramp',unit:'months',step:1,tog:'util',info:'Months to climb from start to steady utilisation as customers onboard.'},
   {k:'arDays',label:'Receivable days (AR)',unit:'days',step:5,tog:'wc',info:'Days between billing and cash collection. Working-capital drag funded by equity until it unwinds.'},
   {k:'coloMW',label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
-  {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Market retail $150-215/kW/mo.'},
+  {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Set by the capacity mix: $250/kW/mo for general-purpose colo, rising with power density.'},
   {k:'coloLeaseYears',label:'Colo lease term',unit:'years',step:1,tog:'colo',info:'Colo tenant lease length. 10yr+ is standard and lets the remaining lease be valued as a resale asset at exit.'},
   {k:'coloEsc',label:'Colo rate escalation',unit:'% / yr',step:0.5,pct:true,tog:'colo',info:'Annual rent bump written into long colo leases. 2-3%/yr typical.'},
 ];
