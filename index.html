@@ -259,6 +259,42 @@
   .modet input.mi{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line2);border-radius:2px;
     padding:4px 5px;font-family:var(--mono);font-size:10.5px;text-align:right;-moz-appearance:textfield}
   .modet input.mi:focus{outline:none;border-color:var(--compute)}
+
+  /* ── phone ─────────────────────────────────── */
+  @media (max-width:640px){
+    .tape{padding:10px 0 10px;gap:8px}
+    .brandwrap{gap:9px;flex-wrap:wrap}
+    .wordmark{font-size:17px;letter-spacing:.06em}
+    .wm-sub{font-size:9px;letter-spacing:.1em}
+    .online-badge{margin-left:0}
+    .spvwrap{margin-left:0;width:100%;gap:7px}
+    .spvi{width:100%;font-size:15px}
+    .tape .actions{width:100%}
+    .tape .actions .btn{flex:1}
+    .tape .statusline{font-size:11px;line-height:1.6}
+
+    /* the mix label stops competing with the tiles for a 390px row */
+    .modelbar .mlabel{width:100%;margin:0 0 4px}
+    .mixt{flex:1 1 100%;padding:7px 12px 7px 9px}
+    .mixsum{width:100%;line-height:1.5}
+    .roadhead{gap:4px}
+    .roadnote{line-height:1.5}
+
+    /* rail rows: label over field instead of a squeezed two-column row */
+    .drv .row{flex-wrap:wrap;gap:4px}
+    .drv .val{width:100%;justify-content:flex-start;gap:9px}
+    .arow{flex-wrap:wrap;gap:2px}
+    .arow>span:first-child{width:100%}
+    .arow .val{width:100%;justify-content:flex-start}
+    .arow input[type=number],input[type=number]{width:110px}
+    .unit{width:auto}
+    .ratesum{text-align:left}
+
+    /* KPI cards two-up, verdict stacked */
+    .grid{grid-template-columns:1fr 1fr;gap:8px}
+    .verdict .word .w{font-size:23px}
+    .test{min-width:0;flex:1 1 100%}
+  }
 </style>
 </head>
 <body>
@@ -1465,7 +1501,9 @@ function roadChart(W){
   // drawn at the container's real pixel width: stretching a viewBox to fit would
   // distort every label along with the shapes
   // height tracks width, or the chart flattens into a ribbon on a wide screen
-  const H=Math.max(160,Math.min(300,Math.round(W/6))),padL=40,padR=66,padT=18,padB=28;
+  const narrow=W<560;
+  const H=Math.max(narrow?170:160,Math.min(300,Math.round(W/6))),
+        padL=narrow?28:40, padR=narrow?14:66, padT=18, padB=28;
   const lastM=Math.max(...road.map(r=>Math.round(r.m)||1));
   const firstM=Math.min(...road.map(r=>Math.round(r.m)||1));
   const X=m=>padL+(m/lastM)*(W-padL-padR);
@@ -1487,7 +1525,7 @@ function roadChart(W){
   let grid='';
   for(let v=stepMW;v<=tot;v+=stepMW)
     grid+=`<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#e4e7ec"/>`
-        + `<text x="${padL-8}" y="${(Y(v)+3.5).toFixed(1)}" fill="#6f7885" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">${v}</text>`;
+        + `<text x="${padL-5}" y="${(Y(v)+3.5).toFixed(1)}" fill="#6f7885" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="end">${v}</text>`;
 
   let ticks='',cum=0;
   road.forEach((r,i)=>{
@@ -1496,23 +1534,26 @@ function roadChart(W){
     if(last||String(road[i+1].k).slice(0,4)!==yr){
       const x=X(Math.round(r.m));
       ticks+=`<line x1="${x.toFixed(1)}" y1="${(H-padB).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(H-padB+4).toFixed(1)}" stroke="#ccd2db"/>`
-           + `<text x="${x.toFixed(1)}" y="${H-8}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">${yr}</text>`;
+           + `<text x="${x.toFixed(1)}" y="${H-8}" fill="#5a6270" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="middle">${yr}</text>`;
       // the final total is called out at the right edge, so skip it here
-      if(!last)ticks+=`<text x="${x.toFixed(1)}" y="${(Y(cum)-7).toFixed(1)}" fill="#111318" font-size="10" font-weight="600" font-family="ui-monospace,monospace" text-anchor="middle">${cum}</text>`;
+      if(!last)ticks+=`<text x="${x.toFixed(1)}" y="${(Y(cum)-7).toFixed(1)}" fill="#111318" font-size="${narrow?9:10}" font-weight="600" font-family="ui-monospace,monospace" text-anchor="middle">${cum}</text>`;
     }
   });
 
-  const bx0=padL, bx1=X(firstM);
-  const buildBand=`<rect x="${bx0.toFixed(1)}" y="${padT}" width="${(bx1-bx0).toFixed(1)}" height="${(H-padB-padT).toFixed(1)}" fill="#f7f8fa"/>`
+  const bx0=padL, bx1=X(firstM), bw=bx1-bx0;
+  const bandLabel = bw>230 ? 'build-out · no capacity online' : (bw>72 ? 'build-out' : '');
+  const buildBand=`<rect x="${bx0.toFixed(1)}" y="${padT}" width="${bw.toFixed(1)}" height="${(H-padB-padT).toFixed(1)}" fill="#f7f8fa"/>`
     + `<line x1="${bx1.toFixed(1)}" y1="${padT}" x2="${bx1.toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db" stroke-dasharray="3 3"/>`
-    + `<text x="${((bx0+bx1)/2).toFixed(1)}" y="${(padT+14).toFixed(1)}" fill="#6f7885" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">build-out · no capacity online</text>`;
+    + (bandLabel?`<text x="${((bx0+bx1)/2).toFixed(1)}" y="${(padT+13).toFixed(1)}" fill="#6f7885" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="middle">${bandLabel}</text>`:'');
 
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`+
     buildBand+grid+bands+
     `<line x1="${padL}" y1="${(H-padB).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db"/>`+
     ticks+
-    `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+3).toFixed(1)}" fill="#111318" font-size="15" font-weight="700" font-family="ui-monospace,monospace">${tot}</text>`+
-    `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+16).toFixed(1)}" fill="#6f7885" font-size="9" letter-spacing="1" font-family="ui-monospace,monospace">MW IT</text>`+
+    (narrow
+      ? `<text x="${(W-padR).toFixed(1)}" y="${(Y(tot)-7).toFixed(1)}" fill="#111318" font-size="12" font-weight="700" font-family="ui-monospace,monospace" text-anchor="end">${tot} MW</text>`
+      : `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+3).toFixed(1)}" fill="#111318" font-size="15" font-weight="700" font-family="ui-monospace,monospace">${tot}</text>`
+        +`<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+16).toFixed(1)}" fill="#6f7885" font-size="9" letter-spacing="1" font-family="ui-monospace,monospace">MW IT</text>`)+
     `</svg>`;
 }
 function renderRoadChart(){
@@ -1525,7 +1566,7 @@ function renderRoadChart(){
   const lastYr=road.length?String(road[road.length-1].k).slice(0,4):'';
   bar.innerHTML=`<div class="roadhead"><span class="mlabel">Build roadmap</span>`+
     `<span class="roadnote">${tot} MW by ${lastYr} · cumulative capacity, stacked by capacity type</span></div>`+
-    roadChart(Math.max(560, Math.round(bar.clientWidth||1000)));
+    roadChart(Math.max(260, Math.round(bar.clientWidth||1000)));
 }
 function roadFoot(){
   const tot=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
