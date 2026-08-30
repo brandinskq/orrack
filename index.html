@@ -38,6 +38,14 @@
   .tape .statusline b{color:var(--ink);font-weight:600}
   .tape .statusline .cy{color:var(--compute)} .tape .statusline .am{color:var(--power)}
   .tape .brand-legacy{display:none}
+  .spvwrap{display:inline-flex;align-items:center;gap:8px;margin-left:14px;min-width:0}
+  .spvl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--dim);flex:none}
+  .spvi{background:transparent;border:none;border-bottom:1px dashed var(--line2);color:var(--ink);
+    font-family:var(--sans);font-size:14px;font-weight:600;letter-spacing:.01em;padding:2px 2px 3px;
+    outline:none;width:min(280px,42vw);text-overflow:ellipsis}
+  .spvi::placeholder{color:var(--dim);font-weight:400;font-style:italic}
+  .spvi:focus{border-bottom-color:var(--compute);border-bottom-style:solid}
   .online-badge{display:inline-flex;align-items:center;gap:6px;margin-left:14px;
     font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.18em;
     color:var(--compute);text-transform:uppercase;padding:4px 9px;
@@ -238,6 +246,8 @@
   <div class="brandwrap">
     <div class="wordmark">O&amp;R<span class="wm-sub">AI DC &amp; GaaS BP</span></div>
     <span class="online-badge"><span class="dot"></span>MODEL · LIVE</span>
+    <span class="spvwrap"><span class="spvl">SPV</span><input id="spvName" class="spvi" type="text"
+      maxlength="60" placeholder="Name this SPV" oninput="setSpv(this.value)"></span>
   </div>
   <div class="actions">
     <button class="btn" onclick="preset('saudi')">Saudi power</button>
@@ -398,7 +408,7 @@ function taasBlended(p){ // fleet-weighted blended $/GPU-hour across modalities
   (p.modes||[]).forEach(m=>{mixSum+=m.mix; rev+=m.mix*modeRevPerHr(m);});
   return {rental: mixSum>0?rev/mixSum:0};
 }
-const TOG={debt:false, decline:true, util:false, phase:true, facility:false, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:false};
+const TOG={debt:true, decline:true, util:false, phase:true, facility:false, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:false};
 let S={...DEF, modes:DEF.modes.map(m=>({...m}))}, T={...TOG};
 
 /* ═══════════════ GPU model catalogue (turnkey landed prices, mid-2026) ═══════════════ */
@@ -419,13 +429,13 @@ let GPU='b300'; // current model id
 /* each product = a switch preset + default overrides. Engine unchanged. */
 const PRODUCTS=[
   {id:'datahall', name:'Data Hall / MW', sub:'self-built AI DC leased out by the MW — PropCo landlord, no GPUs',
-   tog:{facility:true, colo:true, debt:false}, gpu:false,
+   tog:{facility:true, colo:true, debt:true}, gpu:false,
    ov:{coloMW:10, coloRate:180, years:10}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
-   tog:{facility:true, colo:true, debt:false}, gpu:true,
+   tog:{facility:true, colo:true, debt:true}, gpu:true,
    ov:{}},
   {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
-   tog:{facility:true, colo:false, debt:false}, gpu:true, taas:true,
+   tog:{facility:true, colo:false, debt:true}, gpu:true, taas:true,
    ov:{}},
 ];
 let PROD='datahall';
@@ -442,6 +452,11 @@ const DC_GRADES={
 /* default capacity split of the hall — shares are normalised, so they need not sum to 100 */
 const MIX_DEF={A:0.20,B:0.60,D:0.20};
 let MIX={...MIX_DEF}; // capacity split of the data hall, by share of MW IT
+let SPV=''; // SPV / project name — deliberately outside S: Reset clears assumptions, not identity
+function setSpv(v){
+  SPV=(v||'').trim();
+  document.title = SPV ? `${SPV} — AI DC & GaaS BP` : 'AI Infrastructure Investment Model';
+}
 /* display order of the capacity types in the mix bar */
 const DC_GRADE_LIST=[
   {k:'A',name:'Colocation',      sub:'general-purpose CPU · air-cooled · ~15 kW/rack'},
@@ -1165,7 +1180,15 @@ function bindToggles(){
     c.onchange=()=>{T[key]=c.checked; refreshDisabled(F_REV);refreshDisabled(F_COST);refreshDisabled(F_FIN); render();};
   });
 }
-function resetAll(){const cp=PRODUCTS.find(p=>p.id===PROD)||{};S={...DEF, modes:DEF.modes.map(m=>({...m}))};T={...TOG,...(cp.tog||{}),_gpu:cp.gpu,_taas:cp.taas===true};PRIM.forEach(bindPrimary);bindGpuCount();bindColo();bindWsShare();bindToggles();setIdcMode(T.facility);buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);if(T._taas)renderModes();render();}
+/* Reset restored DEF and the product's switches, but never re-applied the product's
+   value overrides or the capacity mix — so the hall silently fell back to DEF sizing
+   while the mix bar still advertised its blend. Run the preset itself instead. */
+function resetAll(){
+  S={...DEF, modes:DEF.modes.map(m=>({...m}))};
+  T={...TOG};
+  PRIM.forEach(bindPrimary);bindGpuCount();bindColo();bindWsShare();bindToggles();
+  setProduct(PROD);
+}
 function preset(name){if(name==='saudi'){S.elec=0.047;}PRIM.forEach(bindPrimary);bindGpuCount();bindColo();buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);render();}
 
 /* ═══════════════ product & model selectors ═══════════════ */
