@@ -655,7 +655,7 @@ function compute(p,tog){
   const netCapex=useGpu?target*p.serverPrice*p.netPct:0;
   const totalDebt=totalCapex*debtPct;
   const princPerMo=totalDebt/Math.max(1,p.debtTenor);
-  let accDeprS=0,accDeprN=0,accDeprF=0,accDeprP=0;
+  let accDeprS=0,accDeprN=0,accDeprF=0,accDeprP=0,accDeprPG=0;
 
   for(let m=1;m<=N;m++){
     if(road){
@@ -713,7 +713,12 @@ function compute(p,tog){
     deprS[m]=Math.min(cumS[m]*(1-p.residualPct)/(p.years*12), Math.max(0,cumS[m]*(1-p.residualPct)-accDeprS)); accDeprS+=deprS[m];
     deprN[m]=Math.min(cumN[m]*(1-p.netResidualPct)/(p.years*12), Math.max(0,cumN[m]*(1-p.netResidualPct)-accDeprN)); accDeprN+=deprN[m];
     deprF[m]=useFac?Math.min(cumF[m]/(p.facilityLife*12), Math.max(0,cumF[m]-accDeprF)):0; accDeprF+=deprF[m];
-    deprP[m]=useFac?Math.min(psTotal/(p.facilityLife*12), Math.max(0,psTotal-accDeprP)):0; accDeprP+=deprP[m];
+    // the two fee scopes amortise on their own asset's life: the hall's over the
+    // facility life, the fleet's over the hold. Gating both on useFac left a leased
+    // deployment fee capitalised in cash and never charged to the P&L at all.
+    const dPF=useFac?Math.min(psFac/(p.facilityLife*12), Math.max(0,psFac-accDeprP)):0; accDeprP+=dPF;
+    const dPG=useGpu?Math.min(psGpu/(p.years*12), Math.max(0,psGpu-accDeprPG)):0; accDeprPG+=dPG;
+    deprP[m]=dPF+dPG;
     depr[m]=deprS[m]+deprN[m]+deprF[m]+deprP[m];
     ebitda[m]=rev[m]-cashopex[m];
     ebit[m]=ebitda[m]-depr[m];
@@ -738,7 +743,7 @@ function compute(p,tog){
   // target is servers for a GPU fleet but megawatts for a landlord, so this line
   // was valuing 120 MW as if they were 120 servers to resell
   const servResidual=useGpu?target*p.serverPrice*p.residualPct:0;
-  const facNBV=useFac?(facTotal+psTotal)*Math.max(0,(p.facilityLife-p.years)/p.facilityLife):0;
+  const facNBV=useFac?(facTotal+psFac)*Math.max(0,(p.facilityLife-p.years)/p.facilityLife):0;
   let facExit=facNBV, coloLeaseVal=0;
   if(useColo&&useFac&&mwIT>0){
     const gpuShareNBV=facNBV*(gpuMW/mwIT), coloShareNBV=facNBV*(coloMW/mwIT);
@@ -795,7 +800,8 @@ function compute(p,tog){
     cb={depr:p.serverPrice*(1-p.residualPct)/(p.years*12)/ssBill,
             net:(p.serverPrice*p.netPct*(1-p.netResidualPct)/(p.years*12)+p.transitMo/Math.max(1,target))/ssBill,
             facility:useFac?(facGpuPerServer/(p.facilityLife*12))/ssBill:0,
-            dev:useFac?(psGpuPerServer/(p.facilityLife*12))/ssBill:0,
+            dev:((useFac?psGpuPerServer/(p.facilityLife*12):0)
+                +(gpus/512)*(p.psPer512||0)/(p.years*12))/ssBill,
             rent:rentPerServerMo/ssBill,
             elec:p.powerKW*p.pue*H*p.elec/ssBill,
             netpower:(p.netPowerKW||0)*p.pue*H*p.elec/ssBill,
@@ -888,7 +894,9 @@ function dollarTable(o){
   const rows=[];
   if(o.useGpu){
     rows.push(['Server depreciation',o.cb.depr,CC.depr],['Network',o.cb.net,CC.net],['Warranty',o.cb.warr,CC.warr]);
-    if(o.useFac)rows.push(['Facility',o.cb.facility,CC.facility],['Development fees',o.cb.dev,CC.dev]);
+    if(o.useFac)rows.push(['Facility',o.cb.facility,CC.facility]);
+    // the fleet's deployment fee exists whether or not the hall is owned
+    rows.push(['Development fees',o.cb.dev,CC.dev]);
     rows.push([o.useFac?'Ground rent':'Colo fee',o.cb.rent,CC.rent],['Electricity',o.cb.elec,CC.elec],['Network power',o.cb.netpower,CC.netpower],['IDC O&amp;M',o.cb.oth,CC.oth]);
     if(o.useGA)rows.push(['Corporate G&amp;A',o.cb.ga,CC.ga]);
   }else{
