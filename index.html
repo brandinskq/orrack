@@ -390,7 +390,7 @@ const DEF={
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.025,
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.20, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
-  gaPct:0.12, gaInfl:0.08,
+  gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25,
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
@@ -451,7 +451,7 @@ const PRODUCTS=[
    // A stabilised campus is sold as a going concern, not liquidated at book value;
    // costs track Saudi wage growth, not 8%/yr; project debt is termed to the asset,
    // not to a GPU refresh cycle; maintenance tracks plant, not the price paid for it.
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0.04, exitMult:15, gaInfl:0.03, debtTenor:120, otherPct:0.025}},
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0.04, exitMult:15, gaInfl:0.03, debtTenor:120}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
    spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true, exit:false}, gpu:true,
    ov:{}},
@@ -527,8 +527,11 @@ const F_COST=[
   {k:'siteRentPerMW',label:'Ground rent (own-build)',unit:'$k/MW IT/yr',step:10,scale:1e3,tog:'facility',info:'Annual ground lease for the land under an owned facility (own-build only). Gulf industrial land is cheap — a minor cost line here.'},
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty already bundled in the node purchase price — no separate support charge during this window. Enterprise HGX systems ship with 3yr. The Warranty & support rate applies only after this period expires.'},
-  {k:'otherPct',label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year, escalating at the O&M inflation rate. Comparable DCs run 2-3%. Note it scales with what the plant cost while the work itself tracks the plant, so a higher build cost per MW inflates this line.'},
-  {k:'gaPct',label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, leasing &amp; sales, admin, finance — plus, for a GPU business, the software platform (orchestration, inference serving, billing, R&amp;D). Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. A pure IDC landlord runs 3-5%: Digital Realty, a listed global REIT across ~300 sites, carries G&amp;A near 8.6% of revenue, and a single-campus SPV should be leaner. A GPU cloud carries the platform on top, hence 12%.'},
+  {k:'otherPct',gpuOnly:true,label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year, escalating at the O&M inflation rate.'},
+  {k:'omPerMWYr',propcoOnly:true,label:'IDC O&M',unit:'$M / MW IT / yr',step:0.1,scale:1e6,info:'Facility operations & maintenance per MW of IT capacity under management — on-site engineers, NOC, M&E maintenance, security, insurance. Escalates at the O&M inflation rate. Excludes electricity, which the end user meters and pays directly, and excludes ground rent and corporate overhead, which are their own lines.'},
+  {k:'gaPct',label:'Company opex + platform',labelPropco:'Corporate overhead',unit:'% of revenue',step:1,pct:true,tog:'ga',
+   info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.',
+   infoPropco:'Corporate overhead — management, leasing &amp; sales, admin, finance, as % of revenue. A landlord runs no software platform, and site engineers, NOC and M&amp;E maintenance are not here either; they sit in IDC O&amp;M. Working range for a pure IDC is 3-5%: Digital Realty, a listed global REIT across ~300 sites, carries G&amp;A near 8.6% of revenue, a ceiling rather than a target for a single-campus SPV.'},
   {k:'gaInfl',label:'O&M / salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in site staff & O&M, driven mainly by salary escalation. Saudi CPI and wage growth run 2-4%. The lease escalates at its own separate rate, so any gap between the two compounds against the margin.'},
   {section:'Tax'},
   {k:'saudiPct',label:'Saudi / GCC ownership',unit:'%',step:5,pct:true,info:'Share of equity held by Saudi/GCC owners. Effective tax = ownership × 2.5% (Zakat) + (1−ownership) × 20% (foreign CIT). Zakat is technically levied on the Zakat base (net worth), approximated here on profit. 100% Saudi ⇒ 2.5% effective; 0% ⇒ 20%.'},
@@ -641,8 +644,13 @@ function compute(p,tog){
     rev[m]=revG[m]+revC[m];
     elec[m]=useGpu?online[m]*pkEff*p.pue*H*p.elec:0; // colo tenants meter their own power
     warr[m]=(m>Math.round((p.warrantyInclYears||0)*12))?(cumS[m]+cumN[m])*p.warrantyPct/12:0; // OEM warranty bundled in node price for the first warrantyInclYears
-    oth[m]=(cumS[m]+cumN[m]+cumF[m])*p.otherPct/12*Math.pow(1+p.gaInfl,Math.floor((m-1)/12));
-    othF[m]=cumF[m]*p.otherPct/12*Math.pow(1+p.gaInfl,Math.floor((m-1)/12));
+    // A GPU fleet's O&M tracks the kit it owns, so a share of capex is the right base.
+    // A landlord's tracks megawatts of plant under management — tying it to build cost
+    // would make the site more expensive to run purely because it cost more to build.
+    const omInfl=Math.pow(1+p.gaInfl,Math.floor((m-1)/12));
+    oth[m]=useGpu?(cumS[m]+cumN[m]+cumF[m])*p.otherPct/12*omInfl
+                 :build[m]*(p.omPerMWYr||0)/12*omInfl;
+    othF[m]=useGpu?cumF[m]*p.otherPct/12*omInfl:oth[m];
     intR[m]=useFac?gpuMW*1000*p.coloRate*(online[m]/target)*Math.pow(1+p.coloEsc,Math.floor((m-1)/12)):0;
     ga[m]=useGA?rev[m]*p.gaPct:0; // company opex + platform, scales with revenue
     rentx[m]=useFac?(mwIT*p.siteRentPerMW/12):(online[m]*pkEff*p.coloPerKWMo);
@@ -681,7 +689,7 @@ function compute(p,tog){
   if(useColo&&useFac&&mwIT>0){
     const gpuShareNBV=facNBV*(gpuMW/mwIT), coloShareNBV=facNBV*(coloMW/mwIT);
     const coloNOI=(()=>{let s=0;for(let m=Math.max(1,N-11);m<=N;m++)s+=revC[m];return s;})()
-      -coloMW*(p.siteRentPerMW+p.facilityPerMW*p.otherPct);
+      -coloMW*(p.siteRentPerMW+(useGpu?p.facilityPerMW*p.otherPct:(p.omPerMWYr||0)));
     const remLease=Math.max(0,(p.coloLeaseYears||0)-p.years);
     const af=remLease>0?(1-Math.pow(1+p.disc,-remLease))/p.disc:0;
     coloLeaseVal=Math.max(0,coloNOI)*af;
@@ -750,7 +758,7 @@ function compute(p,tog){
         dev:(psTotal/(p.facilityLife*12))/kW,
         rent:(coloMW*p.siteRentPerMW/12)/kW,
         elec:0,
-        oth:(facTotal*p.otherPct/12)/kW,
+        oth:(coloMW*(p.omPerMWYr||0)/12)/kW,
         ga:useGA?p.gaPct*p.coloRate:0};
     costBasis=cb.depr+cb.dev+cb.rent+cb.oth+cb.ga;
     unitPrice=p.coloRate; unitStr='/kW\u00b7mo'; rentMo=p.coloRate;
@@ -962,7 +970,7 @@ function scenarios(){
           residualPct:Math.max(0,Math.min(0.5,S.residualPct+d.residAdd))}, T)
       : compute({...S, coloRate:S.coloRate*d.rateMult,
           occupancy:Math.max(0.3,Math.min(1,S.occupancy+d.occAdd)),
-          facilityPerMW:S.facilityPerMW*d.buildMult, otherPct:S.otherPct*d.omMult,
+          facilityPerMW:S.facilityPerMW*d.buildMult, omPerMWYr:S.omPerMWYr*d.omMult,
           coloEsc:Math.max(0,S.coloEsc+d.escAdd)}, T);}
   const rows=[
     ['Project IRR',k=>irrf(res[k].pIRR)],
@@ -1226,7 +1234,8 @@ function buildGroup(id,fields){
   const b=document.getElementById(id);
   const _isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
   fields=fields.filter(f=>!((f.gpuOnly||f.coreInPropco)&&!_isGpu)&&!(f.propcoOnly&&_isGpu));
-  const lbl=f=>`<span class="flabel">${f.label}${f.info?`<span class="ttip" data-tip="${f.info.replace(/"/g,'&quot;')}">ⓘ</span>`:''}</span>`;
+  const txt=f=>({lab:(!_isGpu&&f.labelPropco)||f.label, inf:(!_isGpu&&f.infoPropco)||f.info});
+  const lbl=f=>{const t=txt(f);return `<span class="flabel">${t.lab}${t.inf?`<span class="ttip" data-tip="${t.inf.replace(/"/g,'&quot;')}">ⓘ</span>`:''}</span>`;};
   // a section header survives only if a visible field follows it
   fields=fields.filter((f,i,arr)=>!f.section||(arr[i+1]&&!arr[i+1].section));
   b.innerHTML=fields.map(f=>{
