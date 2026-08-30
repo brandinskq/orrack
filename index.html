@@ -361,9 +361,8 @@
         <input type="range" id="elec_r" min="0.02" max="0.20" step="0.001">
       </div>
       <div class="drv" id="rentalRow">
-        <div class="row"><label>GPU rental price<span class="hint" id="rentNote">blended start price</span><span class="ttip" data-tip="Effective GPU-hour price, blended from the model's wholesale and on-demand rates by the wholesale sales share below. Wholesale = spot/contract floor; on-demand = lowest of AWS/Azure/OCI retail. Edit directly to override the blend.">ⓘ</span></label>
-          <div class="val"><input type="number" id="rental" step="0.10"><span class="unit">$ / GPU-hr</span></div></div>
-        <input type="range" id="rental_r" min="0.5" max="20" step="0.1">
+        <div class="row"><label>GPU rental price<span class="hint" id="rentNote">by sales channel</span><span class="ttip" data-tip="What the fleet sells for, priced per channel. Wholesale is the committed/contract floor — bankable revenue that services debt. On-demand is retail, benchmarked to the lowest of AWS/Azure/OCI: a premium price on volatile volume. The two blend by the wholesale sales share below.">ⓘ</span></div>
+        <div id="gpuRates"></div>
         <div class="row" style="margin-top:9px"><label>Wholesale sales share<span class="hint" id="wsNote">65% contract · 35% on-demand</span><span class="ttip" data-tip="Share of fleet capacity sold on wholesale/committed contracts vs on-demand retail. Contract revenue is bankable (services debt); on-demand earns a premium but is volatile. rental = share×wholesale + (1−share)×on-demand.">ⓘ</span></label>
           <div class="val"><input type="number" id="wsShare" step="5"><span class="unit">% wholesale</span></div></div>
         <input type="range" id="wsShare_r" min="0" max="100" step="5">
@@ -432,7 +431,7 @@
 <script>
 /* ═══════════════ defaults & fields ═══════════════ */
 const DEF={
-  serverPrice:550000, elec:0.047, rental:7.76, years:5, netPct:0.12, transitMo:0,
+  serverPrice:790000, elec:0.047, rental:7.76, years:5, netPct:0.12, transitMo:0,
   wsShare:0.70, // GPU sales mix: 70% wholesale/contract, 30% on-demand — blends the rental
 
   servers:128, gpus:8, deployMonths:3, leadMonths:2, lockYears:5,
@@ -440,7 +439,7 @@ const DEF={
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000, renewUplift:0.10,
-  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25, usableIT:0.80,
+  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPer512:2400000, shellPct:0.25, usableIT:0.80,
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
   // MW IT handed over — campus gross power is this divided by the usable share
@@ -487,7 +486,7 @@ let S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({..
 // ws = wholesale/spot floor $/GPU-hr; od = on-demand retail $/GPU-hr (lowest of AWS/Azure/OCI).
 // Effective rental blends the two by the wholesale sales share (default 65% contract / 35% on-demand).
 const GPU_MODELS=[
-  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:550000,  liquid:false, unit:'node', ws:4.40,  od:14.00, net:0.12},
+  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:4.40,  od:14.00, net:0.12},
   {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:6300000, liquid:true,  unit:'rack', ws:10.50, od:16.00, net:0.03},
 ];
 const blendRental=(m,s)=>s*m.ws+(1-s)*m.od; // s = wholesale share (0..1)
@@ -564,6 +563,7 @@ const F_REV=[
 ];
 const F_COST=[
   {section:'CAPEX &amp; residual value'},
+  {k:'psPer512',gpuOnly:true,label:'Deployment / professional fees',unit:'$M / 512 GPUs',step:0.1,scale:1e6,info:'One-time professional services to stand up the GPU fleet — cluster design, integration, fabric bring-up, commissioning — charged per 512-GPU pod and scaled linearly with the fleet, so a part-pod costs its share. Capitalised at kick-off and depreciated over the hold alongside the servers.'},
   {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time pre-construction professional services on an own-build IDC — securing land, business case, IDC design and development management. Benchmarked at $10.6M for 25 MW ($424k per MW IT) and pro-rated to facility size. Incurred at kick-off, capitalised with the facility and depreciated over its useful life. Excluded from the O&M base — fees create no plant to maintain.'},
   {k:'facilityPerMW',gpuOnly:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in facility construction cost per MW IT (own-build) — structure, power train, cooling, white space. Excludes servers, network and depreciation.'},
   {custom:'buildRates',propcoOnly:true,label:'IDC / facility build'},
@@ -629,10 +629,12 @@ function compute(p,tog){
   const coloMW=useGpu?(useColo?p.coloMW:0):p.coloMW;  // GPU-off: colo is the whole facility
   const mwIT=gpuMW+coloMW;
   const facTotal=useFac?mwIT*p.facilityPerMW:0;
-  // One-time pre-construction professional services (land, business case, design,
-  // development management). Capitalised with the facility and depreciated over the
-  // same life, but kept out of the O&M base — fees create no plant to maintain.
-  const psTotal=useFac?mwIT*(p.psPerMW||0):0;
+  // One-time professional services, capitalised and depreciated with the asset they
+  // stand up, but kept out of the O&M base — fees create no plant to maintain.
+  // Two distinct scopes: the hall is developed per MW, the fleet is deployed per pod.
+  const psFac=useFac?mwIT*(p.psPerMW||0):0;
+  const psGpu=useGpu?(target*gpus/512)*(p.psPer512||0):0;
+  const psTotal=psFac+psGpu;
   const facPerServer=(useFac&&useGpu)?facTotal*(gpuMW/Math.max(mwIT,1e-9))/Math.max(1,target):0;
 
   // A PropCo hall follows an explicit MW roadmap instead of a linear ramp. The shell for
@@ -733,7 +735,9 @@ function compute(p,tog){
     eqFcf[m]=cfo[m]+capexCf[m]+dDraw[m]-dRepay[m];
     cumEq[m]=cumEq[m-1]+eqFcf[m];
   }
-  const servResidual=target*p.serverPrice*p.residualPct;
+  // target is servers for a GPU fleet but megawatts for a landlord, so this line
+  // was valuing 120 MW as if they were 120 servers to resell
+  const servResidual=useGpu?target*p.serverPrice*p.residualPct:0;
   const facNBV=useFac?(facTotal+psTotal)*Math.max(0,(p.facilityLife-p.years)/p.facilityLife):0;
   let facExit=facNBV, coloLeaseVal=0;
   if(useColo&&useFac&&mwIT>0){
@@ -1254,7 +1258,7 @@ function plRow(label,arr,bold){
 }
 
 /* ═══════════════ wiring ═══════════════ */
-const PRIM=[['serverPrice'],['netPct',0.01],['powerKW'],['netPowerKW'],['elec'],['rental'],['years']];
+const PRIM=[['serverPrice'],['netPct',0.01],['powerKW'],['netPowerKW'],['elec'],['years']];
 function bindGpuCount(){
   const n=document.getElementById('gpuCount'),r=document.getElementById('gpuCount_r');
   const g=S.servers*S.gpus;
@@ -1377,7 +1381,7 @@ function setModel(id){
   updateWsNote(m);
 
   applyGpuFacility(m);
-  syncInputs(); renderModelBar(); render();
+  syncInputs(); renderGpuRates(); renderModelBar(); render();
 }
 /* A GPU fleet's hall is sized by the model it houses, not by the PropCo capacity mix.
    Re-applied on product switch so a blended PropCo figure never leaks into a GPU product. */
@@ -1445,7 +1449,7 @@ function setProduct(id){
   ['colo','lock','decline','util','phase','exitcur','ga'].forEach(k=>{
     const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
   });
-  syncToggles();
+  syncToggles(); renderGpuRates();
   setSpvFromProduct(prod);
   if(!prod.gpu)syncRoadmap();
   renderRoadmap();
@@ -1617,6 +1621,29 @@ function updateWsNote(m){
   const el=document.getElementById('wsNote'); m=m||GPU_MODELS.find(x=>x.id===GPU); if(!el||!m)return;
   el.textContent=`WS $${m.ws.toFixed(2)} · OD $${m.od.toFixed(2)} → $${blendRental(m,S.wsShare).toFixed(2)}`;
 }
+/* the fleet sells through two channels at two prices; the blend is what the engine takes */
+function gpuBlendNote(){
+  const m=GPU_MODELS.find(x=>x.id===GPU); if(!m)return '';
+  return `blended ${Math.round(S.wsShare*100)}% / ${Math.round((1-S.wsShare)*100)}% \u2192 `+
+    `<b class="num" style="color:var(--ink)">$${blendRental(m,S.wsShare).toFixed(2)}</b> / GPU&#183;hr`;
+}
+function renderGpuRates(){
+  const b=document.getElementById('gpuRates'); if(!b)return;
+  const m=GPU_MODELS.find(x=>x.id===GPU); if(!m)return;
+  const row=(k,label,dot,val)=>`<div class="arow"><span><i class="ratedot" style="background:${dot}"></i>${label}</span>
+    <span class="val"><input type="number" id="grate_${k}" step="0.10" value="${val.toFixed(2)}"
+      oninput="setGpuRate('${k}',this.value)"><span class="unit">$ / GPU&#183;hr</span></span></div>`;
+  b.innerHTML=row('ws','Wholesale / contract','#a5d600',m.ws)+row('od','On-demand','#1a7fa8',m.od)+
+    `<div class="ratesum" id="grateSum">${gpuBlendNote()}</div>`;
+}
+/* edits land on the selected model and re-blend without redrawing these rows */
+function setGpuRate(k,v){
+  let x=parseFloat(v); if(isNaN(x)||x<0)x=0;
+  const m=GPU_MODELS.find(y=>y.id===GPU); if(!m)return;
+  m[k]=x; S.rental=blendRental(m,S.wsShare);
+  const el=document.getElementById('grateSum'); if(el)el.innerHTML=gpuBlendNote();
+  updateWsNote(m); renderModelBar(); render();
+}
 function bindWsShare(){
   const n=document.getElementById('wsShare'),r=document.getElementById('wsShare_r');
   if(!n)return;
@@ -1624,7 +1651,7 @@ function bindWsShare(){
   updateWsNote();
   const apply=v=>{v=Math.max(0,Math.min(100,v)); S.wsShare=v/100;
     const m=GPU_MODELS.find(x=>x.id===GPU); if(m)S.rental=blendRental(m,S.wsShare);
-    syncInputs(); updateWsNote(m); renderModelBar(); render();};
+    syncInputs(); updateWsNote(m); renderGpuRates(); renderModelBar(); render();};
   n.oninput=()=>{let v=parseFloat(n.value); if(isNaN(v))v=0; r.value=v; apply(v);};
   r.oninput=()=>{n.value=r.value; apply(parseFloat(r.value));};
 }
@@ -1697,6 +1724,7 @@ PRIM.forEach(bindPrimary);
 bindLease();
 bindOcc();
 bindWsShare();
+renderGpuRates();
 renderGradeBar();
 bindGpuCount();
 bindColo();
