@@ -448,7 +448,7 @@ let GPU='b300'; // current model id
 const PRODUCTS=[
   {id:'datahall', name:'Data Hall / MW', sub:'self-built AI DC leased out by the MW — PropCo landlord, no GPUs',
    spv:'AI DC', tog:{facility:true, colo:true, debt:true}, gpu:false,
-   ov:{coloMW:10, coloRate:180, years:10}},
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0.04}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
    spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true}, gpu:true,
    ov:{}},
@@ -525,7 +525,7 @@ const F_COST=[
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty already bundled in the node purchase price — no separate support charge during this window. Enterprise HGX systems ship with 3yr. The Warranty & support rate applies only after this period expires.'},
   {k:'otherPct',label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year. 3.5% aligns with itemised staffing + M&E maintenance at comparable DCs. Escalates annually at the O&M inflation rate (salary growth).'},
-  {k:'gaPct',label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead (management, sales, admin, finance) plus the software platform (orchestration, inference serving, billing, R&D), as % of revenue. Scales with the business. Neoclouds run leaner (open-source Slurm/K8s stack) than managed hyperscaler platforms.'},
+  {k:'gaPct',label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, leasing &amp; sales, admin, finance — plus, for a GPU business, the software platform (orchestration, inference serving, billing, R&amp;D). Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. A pure IDC landlord runs 3-5%: Digital Realty, a listed global REIT across ~300 sites, carries G&amp;A near 8.6% of revenue, and a single-campus SPV should be leaner. A GPU cloud carries the platform on top, hence 12%.'},
   {k:'gaInfl',label:'O&M / salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in site staff & O&M, driven mainly by salary escalation.'},
   {section:'Tax'},
   {k:'saudiPct',label:'Saudi / GCC ownership',unit:'%',step:5,pct:true,info:'Share of equity held by Saudi/GCC owners. Effective tax = ownership × 2.5% (Zakat) + (1−ownership) × 20% (foreign CIT). Zakat is technically levied on the Zakat base (net worth), approximated here on profit. 100% Saudi ⇒ 2.5% effective; 0% ⇒ 20%.'},
