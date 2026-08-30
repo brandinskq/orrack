@@ -355,7 +355,7 @@ const DEF={
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.20, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08,
-  facilityPerMW:12000000, facilityLife:20,
+  facilityPerMW:12000000, facilityLife:25,
   siteRentPerMW:150000, coloPerKWMo:200,
   arDays:45, feePct:0.01, exitMult:8,
   debtPct:0.60, debtRate:0.08, debtTenor:36, disc:0.12,
@@ -451,7 +451,7 @@ const F_REV=[
 ];
 const F_COST=[
   {k:'pue',gpuOnly:true,label:'PUE',unit:'x',step:0.05,info:'Power Usage Effectiveness — total facility power ÷ IT power. Air-cooled ~1.4-1.5; liquid-cooled ~1.2-1.3. Multiplies the electricity bill.'},
-  {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20yr.'},
+  {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20-25yr.'},
   {k:'siteRentPerMW',label:'Ground rent (own-build)',unit:'$k/MW IT/yr',step:10,scale:1e3,tog:'facility',info:'Annual ground lease for the land under an owned facility (own-build only). Gulf industrial land is cheap — a minor cost line here.'},
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty already bundled in the node purchase price — no separate support charge during this window. Enterprise HGX systems ship with 3yr. The Warranty & support rate applies only after this period expires.'},
