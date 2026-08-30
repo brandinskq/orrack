@@ -230,6 +230,11 @@
   .mixt .mp{font-size:9px;font-weight:400;color:var(--dim)}
   .mixt:focus-within{border-color:var(--compute)}
   .mixt .mixdot{width:8px;height:8px;border-radius:2px;margin-right:8px;flex:none}
+  .arow.derived input[type=number]{background:var(--raised);border-color:transparent;font-weight:700}
+  .arow.derived input[type=number]:disabled{color:var(--ink);-webkit-text-fill-color:var(--ink);opacity:1;cursor:default}
+  .dtag{margin-left:6px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--compute);border:1px solid var(--compute-dim);
+    border-radius:2px;padding:1px 4px;vertical-align:2px}
   .ratedot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:baseline}
   .ratesum{font-family:var(--mono);font-size:10.5px;color:var(--muted);padding:6px 0 2px;
     border-top:1px solid var(--line);margin-top:4px;text-align:right}
@@ -1236,12 +1241,17 @@ function refreshDisabled(fields){
     if(f.section)return;
     const el=document.getElementById('a_'+f.k), w=document.getElementById('wrap_'+f.k);
     if(!el||!w)return;
-    let on=f.tog?T[f.tog]:(f.invTog?!T[f.invTog]:true);
-    if(f.roadmapDriven&&!isGpu)on=false; // the build roadmap owns this number
-    if(f.mixDriven&&!isGpu)on=false;     // the capacity mix owns this number
-    w.style.opacity=on?'1':'.35';
+    const src=!isGpu&&(f.roadmapDriven?'roadmap':(f.mixDriven?'mix':''));
+    const on=src?false:(f.tog?T[f.tog]:(f.invTog?!T[f.invTog]:true));
+    // A number computed for you is not a switched-off control: dimming it to .35
+    // buries it. Derived rows keep full contrast and say where the value came from.
+    w.classList.toggle('derived',!!src);
+    w.style.opacity=src?'1':(on?'1':'.35');
     el.disabled=!on;
-    el.title=(!isGpu&&f.roadmapDriven)?'Set by the build roadmap':((!isGpu&&f.mixDriven)?'Set by the capacity mix':'');
+    el.title=src?(src==='roadmap'?'Set by the build roadmap':'Set by the capacity mix'):'';
+    let tag=w.querySelector('.dtag');
+    if(src&&!tag){tag=document.createElement('span');tag.className='dtag';w.querySelector('.flabel').appendChild(tag);}
+    if(tag){ if(src)tag.textContent=src; else tag.remove(); }
   });
 }
 function toggle(id){const e=document.getElementById(id);e.classList.toggle('open');
