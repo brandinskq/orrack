@@ -1464,8 +1464,10 @@ function roadChart(W){
   if(tot<=0)return '';
   // drawn at the container's real pixel width: stretching a viewBox to fit would
   // distort every label along with the shapes
-  const H=150,padL=40,padR=66,padT=18,padB=26;
+  // height tracks width, or the chart flattens into a ribbon on a wide screen
+  const H=Math.max(160,Math.min(300,Math.round(W/6))),padL=40,padR=66,padT=18,padB=28;
   const lastM=Math.max(...road.map(r=>Math.round(r.m)||1));
+  const firstM=Math.min(...road.map(r=>Math.round(r.m)||1));
   const X=m=>padL+(m/lastM)*(W-padL-padR);
   const Y=v=>H-padB-(v/tot)*(H-padT-padB);
 
@@ -1500,8 +1502,13 @@ function roadChart(W){
     }
   });
 
+  const bx0=padL, bx1=X(firstM);
+  const buildBand=`<rect x="${bx0.toFixed(1)}" y="${padT}" width="${(bx1-bx0).toFixed(1)}" height="${(H-padB-padT).toFixed(1)}" fill="#f7f8fa"/>`
+    + `<line x1="${bx1.toFixed(1)}" y1="${padT}" x2="${bx1.toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db" stroke-dasharray="3 3"/>`
+    + `<text x="${((bx0+bx1)/2).toFixed(1)}" y="${(padT+14).toFixed(1)}" fill="#6f7885" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">build-out · no capacity online</text>`;
+
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`+
-    grid+bands+
+    buildBand+grid+bands+
     `<line x1="${padL}" y1="${(H-padB).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db"/>`+
     ticks+
     `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+3).toFixed(1)}" fill="#111318" font-size="15" font-weight="700" font-family="ui-monospace,monospace">${tot}</text>`+
