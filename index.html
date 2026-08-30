@@ -494,10 +494,7 @@ const PRODUCTS=[
    // A stabilised campus is sold as a going concern, not liquidated at book value;
    // costs track Saudi wage growth, not 8%/yr; project debt is termed to the asset,
    // not to a GPU refresh cycle; maintenance tracks plant, not the price paid for it.
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, gaInfl:0.03, debtTenor:120, years:20}},
-  {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
-   spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true, exit:false}, gpu:true,
-   ov:{}},
+   ov:{coloMW:10, coloRate:180, years:20, gaPct:0, siteRentPerMW:0, gaInfl:0.03, debtTenor:120}},
   {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
    spv:'Token as a Service', tog:{facility:true, colo:false, debt:true, exit:false}, gpu:true, taas:true,
    ov:{}},
