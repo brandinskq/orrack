@@ -370,10 +370,10 @@
       </div>
     </div>
 
-    <div class="drawer" id="d_road"><button onclick="toggle('d_road')"><span>Build roadmap</span><span class="mark" id="d_road_m">+</span></button><div class="dbody" id="body_road"></div></div>
-    <div class="drawer" id="d_rev"><button onclick="toggle('d_rev')"><span>Revenue &amp; deployment</span><span class="mark" id="d_rev_m">+</span></button><div class="dbody" id="body_rev"></div></div>
-    <div class="drawer" id="d_cost"><button onclick="toggle('d_cost')"><span>Cost structure</span><span class="mark" id="d_cost_m">+</span></button><div class="dbody" id="body_cost"></div></div>
-    <div class="drawer" id="d_fin"><button onclick="toggle('d_fin')"><span>Financing &amp; returns</span><span class="mark" id="d_fin_m">+</span></button><div class="dbody" id="body_fin"></div></div>
+    <div class="drawer open" id="d_road"><button onclick="toggle('d_road')"><span>Build roadmap</span><span class="mark" id="d_road_m">−</span></button><div class="dbody" id="body_road"></div></div>
+    <div class="drawer open" id="d_rev"><button onclick="toggle('d_rev')"><span>Revenue &amp; deployment</span><span class="mark" id="d_rev_m">−</span></button><div class="dbody" id="body_rev"></div></div>
+    <div class="drawer open" id="d_cost"><button onclick="toggle('d_cost')"><span>Cost structure</span><span class="mark" id="d_cost_m">−</span></button><div class="dbody" id="body_cost"></div></div>
+    <div class="drawer open" id="d_fin"><button onclick="toggle('d_fin')"><span>Financing &amp; returns</span><span class="mark" id="d_fin_m">−</span></button><div class="dbody" id="body_fin"></div></div>
   </div>
 
   <!-- ───────── main ───────── -->
@@ -451,7 +451,7 @@ const PRODUCTS=[
    // A stabilised campus is sold as a going concern, not liquidated at book value;
    // costs track Saudi wage growth, not 8%/yr; project debt is termed to the asset,
    // not to a GPU refresh cycle; maintenance tracks plant, not the price paid for it.
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, exitMult:15, gaInfl:0.03, debtTenor:120}},
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, exitMult:15, gaInfl:0, debtTenor:120}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
    spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true, exit:false}, gpu:true,
    ov:{}},
@@ -1275,11 +1275,17 @@ function refreshDisabled(fields){
 }
 function toggle(id){const e=document.getElementById(id);e.classList.toggle('open');
   document.getElementById(id+'_m').textContent=e.classList.contains('open')?'−':'+';}
+const TOG_UI=[['t_debt','debt'],['t_colo','colo'],['t_ga','ga'],['t_wc','wc'],['t_exit','exit'],['t_exitcur','exitcur'],['t_lock','lock'],['t_decline','decline'],['t_util','util'],['t_phase','phase']];
 function bindToggles(){
-  [['t_debt','debt'],['t_colo','colo'],['t_ga','ga'],['t_wc','wc'],['t_exit','exit'],['t_exitcur','exitcur'],['t_lock','lock'],['t_decline','decline'],['t_util','util'],['t_phase','phase']].forEach(([id,key])=>{
-    const c=document.getElementById(id); c.checked=T[key];
+  TOG_UI.forEach(([id,key])=>{
+    const c=document.getElementById(id); if(!c)return;
+    c.checked=T[key];
     c.onchange=()=>{T[key]=c.checked; refreshDisabled(F_REV);refreshDisabled(F_COST);refreshDisabled(F_FIN); render();};
   });
+}
+/* push T back into the switches — a product preset changes T without touching them */
+function syncToggles(){
+  TOG_UI.forEach(([id,key])=>{const c=document.getElementById(id); if(c)c.checked=!!T[key];});
 }
 /* Reset restored DEF and the product's switches, but never re-applied the product's
    value overrides or the capacity mix — so the hall silently fell back to DEF sizing
@@ -1384,6 +1390,7 @@ function setProduct(id){
   ['colo','lock','decline','util','phase','exitcur'].forEach(k=>{
     const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
   });
+  syncToggles();
   setSpvFromProduct(prod);
   if(!prod.gpu)syncRoadmap();
   renderRoadmap();
