@@ -9,13 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0a0a0f; --surface:#101018; --raised:#16161f; --line:#1e1e28; --line2:#2a2a36;
-    --ink:#f5f6f8; --muted:#8a8a96; --dim:#565662;
-    --compute:#c8ff00;         /* Obsidian Rack lime — exact brand accent */
-    --compute-dim:#5f7d00;
-    --power:#7dd3fc;           /* sky — secondary layer (power/facility) */
-    --power-dim:#2e5f7d;
-    --pass:#c8ff00; --fail:#ff5c6c; --equity:#c084fc; --neutral:#8a8a96;
+    --bg:#ffffff; --surface:#f7f8fa; --raised:#eef1f5; --line:#e4e7ec; --line2:#ccd2db;
+    --ink:#111318; --muted:#5a6270; --dim:#6f7885;
+    --compute:#4f6b00;         /* brand lime, darkened for text/borders on white */
+    --compute-solid:#c8ff00;   /* brand lime at full strength — fills only, dark text on top */
+    --compute-dim:#a9c94a;
+    --power:#1a7fa8;           /* sky — secondary layer (power/facility) */
+    --power-dim:#8fc7de;
+    --pass:#4f6b00; --fail:#d92d3f; --equity:#7c3aed; --neutral:#5a6270;
     --mono:"SF Mono",ui-monospace,"Cascadia Code",Consolas,"Roboto Mono",monospace;
     --sans:"Inter",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
   }
@@ -49,8 +50,8 @@
     border-radius:2px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;
     letter-spacing:.03em;text-transform:uppercase;font-family:var(--mono)}
   .btn:hover{color:var(--ink);border-color:var(--compute)}
-  .btn.solid{background:var(--compute);color:#000;border-color:var(--compute);font-weight:700}
-  .btn.solid:hover{background:#d4ff45;border-color:#d4ff45}
+  .btn.solid{background:var(--compute-solid);color:#111318;border-color:#aad400;font-weight:700}
+  .btn.solid:hover{background:#b7e800;border-color:#9cc900}
 
   /* ── layout ────────────────────────────────── */
   .wrap{display:flex;gap:18px;align-items:flex-start;margin-top:18px;flex-wrap:wrap}
@@ -121,17 +122,17 @@
   .rowstack .modeseg{width:100%}
   .rowstack .modebtn{padding:7px 12px}
   .modebtn:first-child{border-right:1px solid var(--line2)}
-  .modebtn.on{background:var(--compute);color:#000}
+  .modebtn.on{background:var(--compute-solid);color:#111318}
   .flabel{display:inline-flex;align-items:center;gap:5px}
   .ttip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;
     font-size:9px;color:var(--muted);border:1px solid var(--line2);cursor:help;position:relative;flex:none;font-style:normal}
   .ttip:hover{color:var(--compute);border-color:var(--compute)}
   .ttip:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
     width:250px;background:#0a1520;color:#c8d4e0;border:1px solid var(--line2);border-radius:8px;padding:9px 11px;
-    font-size:11px;line-height:1.5;font-weight:400;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;
+    font-size:11px;line-height:1.5;font-weight:400;z-index:100;box-shadow:0 8px 24px rgba(15,20,25,.22);pointer-events:none;
     letter-spacing:0;text-transform:none;white-space:normal}
   .ttip:hover::before{content:'';position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);
-    border:6px solid transparent;border-top-color:var(--line2);z-index:100;pointer-events:none}
+    border:6px solid transparent;border-top-color:#0a1520;z-index:100;pointer-events:none}
   /* rail tooltips: anchor to the icon and open rightward so the left viewport edge never clips them */
   .rail .ttip:hover::after{left:0;right:auto;transform:none;width:min(260px,80vw)}
   .rail .ttip:hover::before{left:6px;right:auto;transform:none}
@@ -156,7 +157,7 @@
   .switch input{opacity:0;width:0;height:0}
   .sl{position:absolute;cursor:pointer;inset:0;background:var(--raised);border:1px solid var(--line2);border-radius:19px;transition:.15s}
   .sl:before{content:"";position:absolute;height:11px;width:11px;left:3px;top:3px;background:var(--dim);border-radius:50%;transition:.15s}
-  .switch input:checked+.sl{background:rgba(200,255,0,.16);border-color:var(--compute-dim)}
+  .switch input:checked+.sl{background:rgba(79,107,0,.13);border-color:var(--compute-dim)}
   .switch input:checked+.sl:before{transform:translateX(17px);background:var(--compute)}
   @media (max-width:900px){.rail{width:100%}}
   /* ── mobile / small screens ───────────────── */
@@ -191,7 +192,7 @@
   .prodcard{flex:1;min-width:150px;background:var(--surface);border:1px solid var(--line2);
     border-radius:2px;padding:12px 14px;cursor:pointer;transition:all .14s;text-align:left}
   .prodcard:hover{border-color:var(--compute-dim)}
-  .prodcard.on{border-color:var(--compute);background:rgba(200,255,0,.05)}
+  .prodcard.on{border-color:var(--compute);background:rgba(79,107,0,.06)}
   .prodcard .pn{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:3px;letter-spacing:.01em;display:flex;align-items:baseline;gap:7px}
   .prodcard .pnum{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--compute);opacity:.75;letter-spacing:.05em}
   .prodcard.on .pn{color:var(--compute)}
@@ -203,7 +204,7 @@
   .modelbtn{background:var(--bg);color:var(--muted);border:1px solid var(--line2);border-radius:2px;
     padding:7px 13px;font-family:var(--mono);font-size:11.5px;font-weight:600;cursor:pointer;transition:all .12s}
   .modelbtn:hover{border-color:var(--compute-dim);color:var(--ink)}
-  .modelbtn.on{background:var(--compute);color:#000;border-color:var(--compute)}
+  .modelbtn.on{background:var(--compute-solid);color:#111318;border-color:#aad400}
   .modelbtn .mp{font-size:9px;opacity:.65;font-weight:400}
   .modelbtn.on .mp{opacity:.8}
   .modelbar.hidden{display:none}
@@ -681,8 +682,8 @@ const irrf=v=>v==null?'n/a':(v*100).toFixed(0)+'%';
 const yrf=v=>v==null?'—':v.toFixed(2)+' yr';
 
 /* ═══════════════ charts (SVG) ═══════════════ */
-const CC={depr:'#c8ff00',net:'#9fd41f',warr:'#5f7d00',facility:'#7dd3fc',rent:'#4a90b8',elec:'#2e5f7d',netpower:'#4a7d99',oth:'#8a8a8a',ga:'#c084fc',profit:'#c8ff00',loss:'#ff5c6c'};
-const MODE_CC={txt:'#c8ff00',aud:'#7dd3fc',img:'#c084fc',vid:'#ff8c42'};
+const CC={depr:'#a5d600',net:'#7fae0a',warr:'#5f7d00',facility:'#4aa8d8',rent:'#3d7ea3',elec:'#2e5f7d',netpower:'#4a7d99',oth:'#7c8492',ga:'#9061f9',profit:'#a5d600',loss:'#d92d3f'};
+const MODE_CC={txt:'#a5d600',aud:'#4aa8d8',img:'#9061f9',vid:'#e07a1f'};
 function modalitySplit(){ // TaaS: capacity-mix vs revenue-share bars + legend
   const modes=S.modes||[]; const mixSum=modes.reduce((s,m)=>s+m.mix,0)||1;
   const rev=modes.map(m=>m.mix*modeRevPerHr(m)); const revTot=rev.reduce((a,b)=>a+b,0)||1;
@@ -694,7 +695,7 @@ function modalitySplit(){ // TaaS: capacity-mix vs revenue-share bars + legend
   return `${cap('Capacity mix — GPU allocation')}${stack('mixPct')}${cap('Revenue share')}${stack('revPct')}
     <table class="modet" style="margin-top:12px"><thead><tr><th>Modality</th><th>Mix</th><th>Rev</th><th>$/GPU-hr</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-const TIER_CC={ws:'#7dd3fc', od:'#c8ff00'}; // wholesale=sky, on-demand=lime
+const TIER_CC={ws:'#4aa8d8', od:'#a5d600'}; // wholesale=sky, on-demand=lime
 function tierSplit(){ // GaaS: wholesale vs on-demand capacity/price/revenue shown separately
   const m=GPU_MODELS.find(x=>x.id===GPU); if(!m)return '';
   const s=S.wsShare;
@@ -718,8 +719,8 @@ function dollarBar(o,price){
   if(profit>=0)r+=`<rect x="${x.toFixed(1)}" y="${y}" width="${sc(profit).toFixed(1)}" height="${barH}" fill="${CC.profit}"/>`;
   else r+=`<rect x="${(sc(o.costBasis)+pad-sc(-profit)).toFixed(1)}" y="${y}" width="${sc(-profit).toFixed(1)}" height="${barH}" fill="${CC.loss}"/>`;
   const px=sc(price)+pad;
-  r+=`<line x1="${px.toFixed(1)}" y1="${y-8}" x2="${px.toFixed(1)}" y2="${y+barH+8}" stroke="#e9edf2" stroke-width="1.6"/>
-      <text x="${px.toFixed(1)}" y="${y+barH+20}" fill="#e9edf2" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">price ${dol(price)}</text>`;
+  r+=`<line x1="${px.toFixed(1)}" y1="${y-8}" x2="${px.toFixed(1)}" y2="${y+barH+8}" stroke="#111318" stroke-width="1.6"/>
+      <text x="${px.toFixed(1)}" y="${y+barH+20}" fill="#111318" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">price ${dol(price)}</text>`;
   return `<svg viewBox="0 0 ${W} ${H+6}" width="100%" height="${H+6}">${r}</svg>`;
 }
 function dollarTable(o){
@@ -747,7 +748,7 @@ function capexBar(o){
   let x=pad, r=`<rect x="${x}" y="${y}" width="${sw.toFixed(1)}" height="${barH}" fill="${CC.depr}" rx="2"/>`; x+=sw;
   if(nw>0.3){r+=`<rect x="${x.toFixed(1)}" y="${y}" width="${nw.toFixed(1)}" height="${barH}" fill="${CC.net}" rx="2"/>`; x+=nw;}
   if(fw>0.3)r+=`<rect x="${x.toFixed(1)}" y="${y}" width="${fw.toFixed(1)}" height="${barH}" fill="${CC.facility}" rx="2"/>`;
-  r+=`<text x="${pad}" y="${y+barH+14}" fill="#94a0ae" font-size="10" font-family="ui-monospace,monospace">${o.useGpu?`servers ${money(o.servCapex)}${o.netCapex>0?` · network ${money(o.netCapex)}`:''}${o.useFac?' · ':''}`:''}${o.useFac?`facility ${money(o.facTotal)} (${o.mwIT.toFixed(2)} MW IT)`:''}</text>`;
+  r+=`<text x="${pad}" y="${y+barH+14}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace">${o.useGpu?`servers ${money(o.servCapex)}${o.netCapex>0?` · network ${money(o.netCapex)}`:''}${o.useFac?' · ':''}`:''}${o.useFac?`facility ${money(o.facTotal)} (${o.mwIT.toFixed(2)} MW IT)`:''}</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${r}</svg>`;
 }
 function revChart(mo){
@@ -764,14 +765,14 @@ function revChart(mo){
   for(let i=1;i<mo.length;i++)area+=' L'+X(mo[i].m).toFixed(1)+' '+Yr(mo[i].ebitda).toFixed(1);
   area+=` L${X(mo[N-1].m).toFixed(1)} ${H-pad} L${X(mo[0].m).toFixed(1)} ${H-pad} Z`;
   let ticks=''; const yrN=Math.round(N/12);
-  for(let y=0;y<=yrN;y++){const m=y*12<1?1:y*12; if(m<=N)ticks+=`<text x="${X(m).toFixed(1)}" y="${H-13}" fill="#5c6875" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y}</text>`;}
+  for(let y=0;y<=yrN;y++){const m=y*12<1?1:y*12; if(m<=N)ticks+=`<text x="${X(m).toFixed(1)}" y="${H-13}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y}</text>`;}
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
     <path d="${area}" fill="rgba(125,211,252,.10)" stroke="none"/>
-    ${line('rev',Yr,'#c8ff00')}
-    ${line('ebitda',Yr,'#7dd3fc')}
-    ${line('price',Yp,'#ff5c6c',1.6)}
+    ${line('rev',Yr,'#a5d600')}
+    ${line('ebitda',Yr,'#1a7fa8')}
+    ${line('price',Yp,'#d92d3f',1.6)}
     ${ticks}
-    <text x="${W-4}" y="14" fill="#ff5c6c" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">price →</text>
+    <text x="${W-4}" y="14" fill="#d92d3f" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">price →</text>
   </svg>`;
 }
 function paybackChart(mo,years){
@@ -781,13 +782,13 @@ function paybackChart(mo,years){
   const X=m=>pad+(m/xmax)*(W-pad-12), Y=v=>H-pad-((v-ymin)/((ymax-ymin)||1))*(H-2*pad);
   let d='M'+arr.map(p=>X(p.m).toFixed(1)+' '+Y(p.cum).toFixed(1)).join(' L ');
   const cross=arr.find(p=>p.cum>=0&&p.m>0);
-  let dot=cross?`<circle cx="${X(cross.m).toFixed(1)}" cy="${Y(0).toFixed(1)}" r="4" fill="#c8ff00"/><text x="${X(cross.m).toFixed(1)}" y="${(Y(0)-10).toFixed(1)}" fill="#c8ff00" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">${(cross.m/12).toFixed(1)}y</text>`:'';
-  let ticks=''; for(let y=0;y<=years;y++){const m=y*12;if(m<=xmax)ticks+=`<text x="${X(m).toFixed(1)}" y="${H-13}" fill="#5c6875" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y}</text>`;}
+  let dot=cross?`<circle cx="${X(cross.m).toFixed(1)}" cy="${Y(0).toFixed(1)}" r="4" fill="#4f6b00"/><text x="${X(cross.m).toFixed(1)}" y="${(Y(0)-10).toFixed(1)}" fill="#4f6b00" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">${(cross.m/12).toFixed(1)}y</text>`:'';
+  let ticks=''; for(let y=0;y<=years;y++){const m=y*12;if(m<=xmax)ticks+=`<text x="${X(m).toFixed(1)}" y="${H-13}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y}</text>`;}
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
-    <line x1="${pad}" y1="${Y(0).toFixed(1)}" x2="${W-12}" y2="${Y(0).toFixed(1)}" stroke="#262d37"/>
-    <path d="${d}" fill="none" stroke="#c8ff00" stroke-width="2.2"/>${dot}${ticks}
-    <text x="${pad-6}" y="${(Y(ymax)+4).toFixed(1)}" fill="#5c6875" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">${money(ymax)}</text>
-    <text x="${pad-6}" y="${(Y(ymin)+4).toFixed(1)}" fill="#5c6875" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">${money(ymin)}</text>
+    <line x1="${pad}" y1="${Y(0).toFixed(1)}" x2="${W-12}" y2="${Y(0).toFixed(1)}" stroke="#ccd2db"/>
+    <path d="${d}" fill="none" stroke="#a5d600" stroke-width="2.2"/>${dot}${ticks}
+    <text x="${pad-6}" y="${(Y(ymax)+4).toFixed(1)}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">${money(ymax)}</text>
+    <text x="${pad-6}" y="${(Y(ymin)+4).toFixed(1)}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="end">${money(ymin)}</text>
   </svg>`;
 }
 function dscrChart(yrs){
@@ -796,20 +797,20 @@ function dscrChart(yrs){
   const gap=(W-pad-12)/n, bw=gap*0.5;
   const Y=v=>H-pad-(v/max)*(H-2*pad);
   let bars=''; yrs.forEach((y,i)=>{const v=y.dscr; const x=pad+i*gap+gap*0.25;
-    const col=v==null?'#2e3742':v<1.2?'#ff5c6c':'#c8ff00';
+    const col=v==null?'#dfe3e9':v<1.2?'#d92d3f':'#a5d600';
     const h=v==null?0:(v/max)*(H-2*pad);
     bars+=`<rect x="${x.toFixed(1)}" y="${(H-pad-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="3"/>
-      <text x="${(x+bw/2).toFixed(1)}" y="${(H-pad-h-6).toFixed(1)}" fill="#e9edf2" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">${v==null?'n/a':v.toFixed(2)+'x'}</text>
-      <text x="${(x+bw/2).toFixed(1)}" y="${H-12}" fill="#5c6875" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y.y}</text>`;});
+      <text x="${(x+bw/2).toFixed(1)}" y="${(H-pad-h-6).toFixed(1)}" fill="#111318" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">${v==null?'n/a':v.toFixed(2)+'x'}</text>
+      <text x="${(x+bw/2).toFixed(1)}" y="${H-12}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y.y}</text>`;});
   const cov=Y(1.2);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
-    <line x1="${pad}" y1="${cov.toFixed(1)}" x2="${W-12}" y2="${cov.toFixed(1)}" stroke="#ff5c6c" stroke-dasharray="4 3" opacity=".7"/>
-    <text x="${W-10}" y="${(cov-5).toFixed(1)}" fill="#ff5c6c" font-size="9.5" font-family="ui-monospace,monospace" text-anchor="end">1.20x</text>${bars}</svg>`;
+    <line x1="${pad}" y1="${cov.toFixed(1)}" x2="${W-12}" y2="${cov.toFixed(1)}" stroke="#d92d3f" stroke-dasharray="4 3" opacity=".7"/>
+    <text x="${W-10}" y="${(cov-5).toFixed(1)}" fill="#d92d3f" font-size="9.5" font-family="ui-monospace,monospace" text-anchor="end">1.20x</text>${bars}</svg>`;
 }
 
 /* ═══════════════ sensitivity & scenarios ═══════════════ */
 function heatColor(v,lo,hi){
-  if(v==null)return '#2e3742';
+  if(v==null)return '#dfe3e9';
   const t=Math.max(0,Math.min(1,(v-lo)/((hi-lo)||1)));
   const r=Math.round(242+(88-242)*t), g=Math.round(112+(214-112)*t), b=Math.round(138+(141-138)*t);
   return `rgb(${r},${g},${b})`;
@@ -981,7 +982,7 @@ function render(){
     <div class="card">
       <div class="h">Revenue &amp; EBITDA vs ${o.useTaas?'token':o.useGpu?'rental':'lease'} price — monthly</div>
       ${revChart(o.mo)}
-      <div class="legend"><span><i style="background:#c8ff00"></i>Revenue</span><span><i style="background:#7dd3fc"></i>EBITDA</span><span><i style="background:#ff5c6c"></i>${o.useTaas?'Token':o.useGpu?'Rental':'Lease'} price (right axis)</span></div>
+      <div class="legend"><span><i style="background:#a5d600"></i>Revenue</span><span><i style="background:#1a7fa8"></i>EBITDA</span><span><i style="background:#d92d3f"></i>${o.useTaas?'Token':o.useGpu?'Rental':'Lease'} price (right axis)</span></div>
     </div>
     <div class="card">
       <div class="h">Payback — cumulative equity cash</div>
