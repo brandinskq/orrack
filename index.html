@@ -439,7 +439,7 @@ const DEF={
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000, renewUplift:0.10,
-  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, // $2.4M per 512-GPU pod, expressed per card shellPct:0.25, usableIT:0.80,
+  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, shellPct:0.25, usableIT:0.80, // psPerGpu = $2.4M per 512-GPU pod, expressed per card
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
   // MW IT handed over — campus gross power is this divided by the usable share
@@ -1528,7 +1528,7 @@ function roadChart(W){
   // height tracks width, or the chart flattens into a ribbon on a wide screen
   const narrow=W<560;
   const H=Math.max(narrow?170:160,Math.min(300,Math.round(W/6))),
-        padL=narrow?28:40, padR=narrow?14:66, padT=18, padB=28;
+        padL=narrow?28:40, padR=narrow?14:66, padT=18, padB=narrow?28:34;
   const lastM=Math.max(...road.map(r=>Math.round(r.m)||1));
   const firstM=Math.min(...road.map(r=>Math.round(r.m)||1));
   // The build-out year is a phase, not a quarter of the story: give it a fixed
@@ -1557,16 +1557,29 @@ function roadChart(W){
     grid+=`<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#e4e7ec"/>`
         + `<text x="${padL-5}" y="${(Y(v)+3.5).toFixed(1)}" fill="#6f7885" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="end">${v}</text>`;
 
-  let ticks='',cum=0;
+  const labelAll=!narrow && road.length<=9;
+  const fmt=v=>labelAll?Math.round(v).toLocaleString():(v>=1000?(v/1000).toFixed(1)+'k':String(v));
+  // A label pinned to the step's corner belongs to neither the segment before it nor
+  // the one after. Each running total now sits over the middle of the plateau it
+  // describes, with the tranche's own addition under its name on the axis.
+  let ticks='',rules='',cum=0,prevYr='';
   road.forEach((r,i)=>{
-    cum+=Math.max(0,r.mw||0);
+    const add=Math.max(0,r.mw||0); cum+=add;
     const yr=String(r.k).slice(0,4), last=i===road.length-1;
-    if(last||String(road[i+1].k).slice(0,4)!==yr){
-      const x=X(Math.round(r.m));
-      ticks+=`<line x1="${x.toFixed(1)}" y1="${(H-padB).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(H-padB+4).toFixed(1)}" stroke="#ccd2db"/>`
-           + `<text x="${x.toFixed(1)}" y="${H-8}" fill="#5a6270" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="middle">${yr}</text>`;
-      // the final total is called out at the right edge, so skip it here
-      if(!last)ticks+=`<text x="${x.toFixed(1)}" y="${(Y(cum)-7).toFixed(1)}" fill="#111318" font-size="${narrow?9:10}" font-weight="600" font-family="ui-monospace,monospace" text-anchor="middle">${cum}</text>`;
+    const yearEnd=last||String(road[i+1].k).slice(0,4)!==yr;
+    const x=X(Math.round(r.m));
+    const xNext=last?(W-padR):X(Math.round(road[i+1].m));
+    if(yr!==prevYr && i>0){
+      rules+=`<line x1="${X(Math.round(road[i-1].m)).toFixed(1)}" y1="${padT}" x2="${X(Math.round(road[i-1].m)).toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#eef1f5"/>`;
+    }
+    prevYr=yr;
+    if(!labelAll && !yearEnd)return;
+    ticks+=`<line x1="${x.toFixed(1)}" y1="${(H-padB).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(H-padB+4).toFixed(1)}" stroke="#ccd2db"/>`
+         + `<text x="${x.toFixed(1)}" y="${H-14}" fill="${yearEnd?'#5a6270':'#8a929e'}" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="middle">${labelAll?r.k:yr}</text>`;
+    if(labelAll)ticks+=`<text x="${x.toFixed(1)}" y="${H-3}" fill="#8a929e" font-size="9" font-family="ui-monospace,monospace" text-anchor="middle">+${fmt(add)}</text>`;
+    if(!last||!labelAll){
+      const mid=(x+xNext)/2;
+      ticks+=`<text x="${mid.toFixed(1)}" y="${(Y(cum)-8).toFixed(1)}" fill="${yearEnd?'#111318':'#5a6270'}" font-size="${narrow?9:10.5}" font-weight="${yearEnd?700:500}" font-family="ui-monospace,monospace" text-anchor="middle">${fmt(cum)}</text>`;
     }
   });
 
@@ -1576,8 +1589,9 @@ function roadChart(W){
     + `<line x1="${bx1.toFixed(1)}" y1="${padT}" x2="${bx1.toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db" stroke-dasharray="3 3"/>`
     + (bandLabel?`<text x="${((bx0+bx1)/2).toFixed(1)}" y="${(padT+13).toFixed(1)}" fill="#6f7885" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="middle">${bandLabel}</text>`:'');
 
+  const topLine=`<path d="${fwd(1)}" fill="none" stroke="#7fae0a" stroke-width="1.6" stroke-linejoin="round"/>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`+
-    buildBand+grid+bands+
+    buildBand+grid+rules+bands+topLine+
     `<line x1="${padL}" y1="${(H-padB).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db"/>`+
     ticks+
     (narrow
