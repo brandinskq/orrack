@@ -38,6 +38,12 @@
   .tape .statusline b{color:var(--ink);font-weight:600}
   .tape .statusline .cy{color:var(--compute)} .tape .statusline .am{color:var(--power)}
   .tape .brand-legacy{display:none}
+  /* sibling model: the two businesses are modelled separately, so make the hop explicit */
+  .xlink{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);border-radius:2px;
+    padding:8px 13px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--muted);text-decoration:none;background:var(--bg);white-space:nowrap}
+  .xlink:hover{color:var(--ink);border-color:var(--compute)}
+  .xlink .arr{color:var(--compute);font-size:12px;line-height:1}
   .spvwrap{display:inline-flex;align-items:center;gap:8px;margin-left:14px;min-width:0}
   .spvl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.2em;
     text-transform:uppercase;color:var(--dim);flex:none}
@@ -270,7 +276,7 @@
     .spvwrap{margin-left:0;width:100%;gap:7px}
     .spvi{width:100%;font-size:15px}
     .tape .actions{width:100%}
-    .tape .actions .btn{flex:1}
+    .tape .actions .btn,.tape .actions .xlink{flex:1;justify-content:center}
     .tape .statusline{font-size:11px;line-height:1.6}
 
     /* the mix label stops competing with the tiles for a 390px row */
@@ -307,6 +313,7 @@
       maxlength="60" placeholder="Name this SPV" oninput="setSpv(this.value)"></span>
   </div>
   <div class="actions">
+    <a class="xlink" href="https://or-gaas.vercel.app/" target="_blank" rel="noopener">GPU as a Service <span class="arr">&#8599;</span></a>
     <button class="btn" onclick="preset('saudi')">Saudi power</button>
     <button class="btn solid" onclick="resetAll()">Reset</button>
   </div>
@@ -426,7 +433,7 @@
 /* ═══════════════ defaults & fields ═══════════════ */
 const DEF={
   serverPrice:550000, elec:0.047, rental:7.76, years:5, netPct:0.12, transitMo:0,
-  wsShare:1.0, // GPU sales mix: 100% wholesale/contract, 0% on-demand — blends the rental
+  wsShare:0.70, // GPU sales mix: 70% wholesale/contract, 30% on-demand — blends the rental
 
   servers:128, gpus:8, deployMonths:3, leadMonths:2, lockYears:5,
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.025,
