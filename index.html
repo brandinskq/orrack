@@ -229,7 +229,13 @@
   .mixt .mixl{display:flex;flex-direction:column;gap:1px;line-height:1.25;text-align:left}
   .mixt .mp{font-size:9px;font-weight:400;color:var(--dim)}
   .mixt:focus-within{border-color:var(--compute)}
+  .mixt .mixdot{width:8px;height:8px;border-radius:2px;margin-right:8px;flex:none}
   .mixsum{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.02em}
+  /* build roadmap — the mix, extended over time */
+  .roadbar{padding:2px 2px 14px}
+  .roadbar.hidden{display:none}
+  .roadhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:2px}
+  .roadnote{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.02em}
   .mixsum.off{color:var(--fail);font-weight:700}
   .modet{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10.5px;margin-top:2px}
   .modet th{color:var(--dim);font-weight:600;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 3px;text-align:right}
@@ -259,6 +265,7 @@
 <div class="prodbar" id="prodbar"></div>
 <div class="modelbar" id="modelbar"></div>
 <div class="modelbar hidden" id="gradeBar"></div>
+<div class="roadbar hidden" id="roadBar"></div>
 
 <div class="wrap">
   <!-- ───────── rail ───────── -->
@@ -326,11 +333,6 @@
         <div class="row rowstack"><label>IDC strategy<span class="hint">own-build capex vs lease colocation</span></label>
           <div class="modeseg"><button id="mode_build" class="modebtn" onclick="setIdcMode(true)">Own-build</button><button id="mode_lease" class="modebtn" onclick="setIdcMode(false)">Lease / colocation</button></div>
         </div>
-      </div>
-      <div class="drv" id="drv_build">
-        <div class="row"><label>IDC / facility build<span class="hint">air-cooled Tier III, per MW IT</span><span class="ttip" data-tip="All-in facility construction cost per MW IT (own-build). Air-cooled Tier III ~$8-10M; liquid-cooled for B300 density ~$11-13M. Excludes servers, network, and depreciation.">ⓘ</span></label>
-          <div class="val"><input type="number" id="facilityPerMW" step="0.5"><span class="unit">$M / MW</span></div></div>
-        <input type="range" id="facilityPerMW_r" min="3" max="20" step="0.5">
       </div>
       <div class="drv" id="drv_lease">
         <div class="row"><label>Colocation rent<span class="hint">rack + power capacity, excl. metered power</span><span class="ttip" data-tip="Colocation rent you pay a third-party DC per kW of IT capacity (lease mode), excl. metered power. Market $150-215/kW/mo. No facility capex, no depreciation — pure opex.">ⓘ</span></label>
@@ -454,12 +456,13 @@ const VAT_RATES={domestic:0.15, export:0};
 const OV_KEYS=[...new Set(PRODUCTS.flatMap(p=>Object.keys(p.ov||{})))];
 /* Data-hall capacity types — the hall is a weighted blend of these, applied in PropCo modes */
 const DC_GRADES={
-  A:{facilityPerMW:8e6,pue:1.45,coloRate:250,rackKW:15},
-  B:{facilityPerMW:10e6,pue:1.35,coloRate:328,rackKW:45},
-  D:{facilityPerMW:17e6,pue:1.18,coloRate:656,rackKW:200}
+  A:{facilityPerMW:11e6,     pue:1.45,coloRate:250,rackKW:15},
+  B:{facilityPerMW:13.75e6,  pue:1.35,coloRate:328,rackKW:45},
+  D:{facilityPerMW:23.375e6, pue:1.18,coloRate:656,rackKW:200}
 };
 /* default capacity split of the hall — shares are normalised, so they need not sum to 100 */
 const MIX_DEF={A:0.20,B:0.60,D:0.20};
+const MIX_CC={A:'#7c8492',B:'#a5d600',D:'#1a7fa8'}; // neutral / compute lime / cooling blue
 let MIX={...MIX_DEF}; // capacity split of the data hall, by share of MW IT
 let SPV=''; // SPV / project name — deliberately outside S: Reset clears assumptions, not identity
 function setSpv(v){
@@ -497,6 +500,7 @@ const F_REV=[
 const F_COST=[
   {section:'CAPEX &amp; residual value'},
   {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time pre-construction professional services on an own-build IDC — securing land, business case, IDC design and development management. Benchmarked at $10.6M for 25 MW ($424k per MW IT) and pro-rated to facility size. Incurred at kick-off, capitalised with the facility and depreciated over its useful life. Excluded from the O&M base — fees create no plant to maintain.'},
+  {k:'facilityPerMW',mixDriven:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in facility construction cost per MW IT (own-build) — structure, power train, cooling, white space. Excludes servers, network and depreciation. In Data Hall mode this is set by the capacity mix: $11M/MW for general-purpose colocation, $13.75M for air-cooled AI and $23.375M for liquid-cooled AI.'},
   {k:'shellPct',propcoOnly:true,label:'Shell built up-front',unit:'% of facility capex',step:5,pct:true,tog:'facility',info:'Share of facility capex that is the base building — land works, structure, envelope, primary power route. Built once for the whole site in the first construction window rather than tranche by tranche, so it is spent before any MW earns. The remainder is fit-out (power train, cooling, white space) and follows each roadmap tranche.'},
   {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20-25yr.'},
   {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'GPU server resale value at exit, as % of purchase price. H100 held 35-50% at 3yr; 40% is reasonable for a 3yr-old GPU given compute scarcity.'},
@@ -1155,7 +1159,7 @@ function plRow(label,arr,bold){
 }
 
 /* ═══════════════ wiring ═══════════════ */
-const PRIM=[['serverPrice'],['netPct',0.01],['powerKW'],['netPowerKW'],['elec'],['rental'],['facilityPerMW',1e6],['years']];
+const PRIM=[['serverPrice'],['netPct',0.01],['powerKW'],['netPowerKW'],['elec'],['rental'],['years']];
 function bindGpuCount(){
   const n=document.getElementById('gpuCount'),r=document.getElementById('gpuCount_r');
   const g=S.servers*S.gpus;
@@ -1174,7 +1178,6 @@ function setIdcMode(build){
   T.facility=build;
   document.getElementById('mode_build').classList.toggle('on',build);
   document.getElementById('mode_lease').classList.toggle('on',!build);
-  document.getElementById('drv_build').style.display=build?'':'none';
   document.getElementById('drv_lease').style.display=build?'none':'';
   const tf=document.getElementById('t_facility'); if(tf)tf.checked=build;
   refreshDisabled(F_REV);refreshDisabled(F_COST);refreshDisabled(F_FIN);
@@ -1216,9 +1219,10 @@ function refreshDisabled(fields){
     if(!el||!w)return;
     let on=f.tog?T[f.tog]:(f.invTog?!T[f.invTog]:true);
     if(f.roadmapDriven&&!isGpu)on=false; // the build roadmap owns this number
+    if(f.mixDriven&&!isGpu)on=false;     // the capacity mix owns this number
     w.style.opacity=on?'1':'.35';
     el.disabled=!on;
-    el.title=(f.roadmapDriven&&!isGpu)?'Set by the build roadmap':'';
+    el.title=(!isGpu&&f.roadmapDriven)?'Set by the build roadmap':((!isGpu&&f.mixDriven)?'Set by the capacity mix':'');
   });
 }
 function toggle(id){const e=document.getElementById(id);e.classList.toggle('open');
@@ -1263,10 +1267,15 @@ function setModel(id){
   if(m.net!=null)S.netPct=m.net; // GB300 rack bundles NVLink → only inter-rack fabric is extra
   updateWsNote(m);
 
-  // liquid-cooled models drive facility cost & PUE
+  applyGpuFacility(m);
+  syncInputs(); renderModelBar(); render();
+}
+/* A GPU fleet's hall is sized by the model it houses, not by the PropCo capacity mix.
+   Re-applied on product switch so a blended PropCo figure never leaks into a GPU product. */
+function applyGpuFacility(m){
+  m=m||GPU_MODELS.find(x=>x.id===GPU); if(!m)return;
   if(m.liquid){S.facilityPerMW=16000000; S.pue=1.25;} // liquid AI hall (GB300)
   else{S.facilityPerMW=12000000; S.pue=1.45;}          // air-cooled AI-ready
-  syncInputs(); renderModelBar(); render();
 }
 /* ── Token-as-a-Service modality mix table ── */
 function renderModes(){
@@ -1318,10 +1327,12 @@ function setProduct(id){
   const rentalRow=document.getElementById('rentalRow'); if(rentalRow)rentalRow.style.display=(prod.gpu&&!taas)?'':'none';
   const taasRow=document.getElementById('taasRow'); if(taasRow)taasRow.style.display=taas?'':'none';
   if(taas)renderModes();
-  if(!prod.gpu){MIX={...MIX_DEF}; applyMix();} // PropCo halls are built from the capacity mix
+  if(prod.gpu)applyGpuFacility();               // GPU halls follow the installed model
+  else{MIX={...MIX_DEF}; applyMix();}          // PropCo halls are built from the capacity mix
   setSpvFromProduct(prod);
   if(!prod.gpu)syncRoadmap();
   renderRoadmap();
+  renderRoadChart();
   syncInputs(); renderProdBar(); renderModelBar(); renderGradeBar();
   setIdcMode(T.facility);
   render();
@@ -1350,7 +1361,7 @@ function renderGradeBar(){
   if(prod.gpu){bar.classList.add('hidden');return;}
   bar.classList.remove('hidden');
   bar.innerHTML='<span class="mlabel">Capacity mix</span>'+DC_GRADE_LIST.map(g=>
-    `<span class="mixt"><input class="mixi" id="mix_${g.k}" type="number" min="0" max="100" step="5"
+    `<span class="mixt"><i class="mixdot" style="background:${MIX_CC[g.k]}"></i><input class="mixi" id="mix_${g.k}" type="number" min="0" max="100" step="5"
        value="${Math.round((MIX[g.k]||0)*100)}" oninput="setMixShare('${g.k}',this.value)"><span class="pct">%</span>
       <span class="mixl">${g.name}<span class="mp">${g.sub}</span></span></span>`).join('')+
     `<span id="mixSum">${mixSummary()}</span>`;
@@ -1376,6 +1387,50 @@ function renderRoadmap(){
     <tbody>${rows}</tbody></table>
     <div class="foot" id="roadFoot">${roadFoot()}</div>`;
 }
+/* Cumulative MW as a staircase, each bar split by the capacity mix — the mix bar
+   above says what a MW is, this says when it arrives. */
+function roadChart(){
+  const road=(S.roadmap||[]).slice().sort((a,b)=>(a.m||0)-(b.m||0));
+  if(!road.length)return '';
+  const tot=road.reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+  if(tot<=0)return '';
+  const W=1000,H=118,padL=6,padR=10,padT=18,padB=26;
+  const n=road.length, gap=(W-padL-padR)/n, bw=Math.min(30,gap*0.66);
+  const plot=H-padT-padB;
+  const w=mixWeights();
+  let bars='',ticks='',cum=0;
+  road.forEach((r,i)=>{
+    cum+=Math.max(0,r.mw||0);
+    const x=padL+i*gap+(gap-bw)/2;
+    let y=H-padB;
+    w.forEach(seg=>{
+      const h=(cum*seg.w/tot)*plot;
+      if(h<=0.2)return;
+      y-=h;
+      bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${MIX_CC[seg.k]}"/>`;
+    });
+    const yr=String(r.k).slice(0,4);
+    const isYearEnd = (i===n-1) || String(road[i+1].k).slice(0,4)!==yr;
+    if(isYearEnd){
+      ticks+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" fill="#111318" font-size="10.5" font-weight="600" font-family="ui-monospace,monospace" text-anchor="middle">${cum}</text>`+
+             `<text x="${(x+bw/2).toFixed(1)}" y="${H-8}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">${yr}</text>`;
+    }
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">`+
+    `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#ccd2db"/>${bars}${ticks}</svg>`;
+}
+function renderRoadChart(){
+  const bar=document.getElementById('roadBar'); if(!bar)return;
+  const isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
+  if(isGpu){bar.classList.add('hidden'); bar.innerHTML=''; return;}
+  bar.classList.remove('hidden');
+  const road=S.roadmap||[];
+  const tot=road.reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+  const lastYr=road.length?String(road[road.length-1].k).slice(0,4):'';
+  bar.innerHTML=`<div class="roadhead"><span class="mlabel">Build roadmap</span>`+
+    `<span class="roadnote">${tot} MW by ${lastYr} · cumulative capacity, stacked by the mix above · `+
+    `shell built once for the whole site, fit-out per tranche</span></div>${roadChart()}`;
+}
 function roadFoot(){
   const tot=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
   const last=(S.roadmap||[]).reduce((t,r)=>Math.max(t,r.m||0),0);
@@ -1386,19 +1441,19 @@ function setRoadMW(i,v){
   let x=parseFloat(v); if(isNaN(x)||x<0)x=0;
   S.roadmap[i].mw=x; syncRoadmap();
   const f=document.getElementById('roadFoot'); if(f)f.textContent=roadFoot();
-  syncInputs(); render();
+  renderRoadChart(); syncInputs(); render();
 }
 function setRoadMonth(i,v){
   let x=Math.round(parseFloat(v)); if(isNaN(x)||x<1)x=1;
   S.roadmap[i].m=x;
   const f=document.getElementById('roadFoot'); if(f)f.textContent=roadFoot();
-  syncInputs(); render();
+  syncInputs(); renderRoadChart(); render();
 }
 /* live-edit path: never re-render the bar itself, or the field loses focus mid-typing */
 function setMixShare(k,val){
   let v=parseFloat(val); if(isNaN(v)||v<0)v=0;
   MIX[k]=v/100;
-  applyMix(); syncInputs();
+  applyMix(); syncInputs(); renderRoadChart();
   const el=document.getElementById('mixSum'); if(el)el.innerHTML=mixSummary();
   render();
 }
