@@ -360,6 +360,7 @@
       </div>
     </div>
 
+    <div class="drawer" id="d_road"><button onclick="toggle('d_road')"><span>Build roadmap</span><span class="mark" id="d_road_m">+</span></button><div class="dbody" id="body_road"></div></div>
     <div class="drawer" id="d_rev"><button onclick="toggle('d_rev')"><span>Revenue &amp; deployment</span><span class="mark" id="d_rev_m">+</span></button><div class="dbody" id="body_rev"></div></div>
     <div class="drawer" id="d_cost"><button onclick="toggle('d_cost')"><span>Cost structure</span><span class="mark" id="d_cost_m">+</span></button><div class="dbody" id="body_cost"></div></div>
     <div class="drawer" id="d_fin"><button onclick="toggle('d_fin')"><span>Financing &amp; returns</span><span class="mark" id="d_fin_m">+</span></button><div class="dbody" id="body_fin"></div></div>
@@ -380,7 +381,15 @@ const DEF={
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.20, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08,
-  facilityPerMW:12000000, facilityLife:25, psPerMW:424000,
+  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25,
+  // IDC build roadmap — MW handed over, and the project month each tranche goes live.
+  // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
+  roadmap:[
+    {k:'2026',    m:12, mw:4},
+    {k:'2027 Q1', m:15, mw:4},  {k:'2027 Q2', m:18, mw:4},  {k:'2027 Q3', m:21, mw:4},  {k:'2027 Q4', m:24, mw:6},
+    {k:'2028 Q1', m:27, mw:8},  {k:'2028 Q2', m:30, mw:8},  {k:'2028 Q3', m:33, mw:8},  {k:'2028 Q4', m:36, mw:8},
+    {k:'2029 Q1', m:39, mw:10}, {k:'2029 Q2', m:42, mw:10}, {k:'2029 Q3', m:45, mw:10}, {k:'2029 Q4', m:48, mw:10},
+    {k:'2030 Q1', m:51, mw:14}, {k:'2030 Q2', m:54, mw:14}, {k:'2030 Q3', m:57, mw:14}, {k:'2030 Q4', m:60, mw:14}],
   siteRentPerMW:150000, coloPerKWMo:200,
   arDays:45, feePct:0.01, exitMult:8,
   debtPct:0.60, debtRate:0.08, debtTenor:36, disc:0.12,
@@ -409,7 +418,7 @@ function taasBlended(p){ // fleet-weighted blended $/GPU-hour across modalities
   return {rental: mixSum>0?rev/mixSum:0};
 }
 const TOG={debt:true, decline:true, util:false, phase:true, facility:false, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:false};
-let S={...DEF, modes:DEF.modes.map(m=>({...m}))}, T={...TOG};
+let S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({...r}))}, T={...TOG};
 
 /* ═══════════════ GPU model catalogue (turnkey landed prices, mid-2026) ═══════════════ */
 /* nodeCost = full system: GPUs + CPU/mem/storage + chassis + liquid cooling + integration */
@@ -429,13 +438,13 @@ let GPU='b300'; // current model id
 /* each product = a switch preset + default overrides. Engine unchanged. */
 const PRODUCTS=[
   {id:'datahall', name:'Data Hall / MW', sub:'self-built AI DC leased out by the MW — PropCo landlord, no GPUs',
-   tog:{facility:true, colo:true, debt:true}, gpu:false,
+   spv:'AI DC', tog:{facility:true, colo:true, debt:true}, gpu:false,
    ov:{coloMW:10, coloRate:180, years:10}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
-   tog:{facility:true, colo:true, debt:true}, gpu:true,
+   spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true}, gpu:true,
    ov:{}},
   {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
-   tog:{facility:true, colo:false, debt:true}, gpu:true, taas:true,
+   spv:'Token as a Service', tog:{facility:true, colo:false, debt:true}, gpu:true, taas:true,
    ov:{}},
 ];
 let PROD='datahall';
@@ -457,6 +466,12 @@ function setSpv(v){
   SPV=(v||'').trim();
   document.title = SPV ? `${SPV} — AI DC & GaaS BP` : 'AI Infrastructure Investment Model';
 }
+/* each product is its own SPV — switching product switches the vehicle it names */
+function setSpvFromProduct(prod){
+  const el=document.getElementById('spvName');
+  setSpv(prod.spv||'');
+  if(el)el.value=SPV;
+}
 /* display order of the capacity types in the mix bar */
 const DC_GRADE_LIST=[
   {k:'A',name:'Colocation',      sub:'general-purpose CPU · air-cooled · ~15 kW/rack'},
@@ -474,7 +489,7 @@ const F_REV=[
   {k:'utilSteady',gpuOnly:true,label:'Utilization — steady',unit:'%',step:1,pct:true,info:'Mature utilisation once ramped. 85% is strong for contracted capacity; hyperscalers assume 70-90%.'},
   {k:'utilRamp',gpuOnly:true,label:'Utilization ramp',unit:'months',step:1,tog:'util',info:'Months to climb from start to steady utilisation as customers onboard.'},
   {k:'arDays',label:'Receivable days (AR)',unit:'days',step:5,tog:'wc',info:'Days between billing and cash collection. Working-capital drag funded by equity until it unwinds.'},
-  {k:'coloMW',label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
+  {k:'coloMW',roadmapDriven:true,label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
   {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Set by the capacity mix: $250/kW/mo for general-purpose colo, rising with power density.'},
   {k:'coloLeaseYears',label:'Colo lease term',unit:'years',step:1,tog:'colo',info:'Colo tenant lease length. 10yr+ is standard and lets the remaining lease be valued as a resale asset at exit.'},
   {k:'coloEsc',label:'Colo rate escalation',unit:'% / yr',step:0.5,pct:true,tog:'colo',info:'Annual rent bump written into long colo leases. 2-3%/yr typical.'},
@@ -482,6 +497,7 @@ const F_REV=[
 const F_COST=[
   {section:'CAPEX &amp; residual value'},
   {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time pre-construction professional services on an own-build IDC — securing land, business case, IDC design and development management. Benchmarked at $10.6M for 25 MW ($424k per MW IT) and pro-rated to facility size. Incurred at kick-off, capitalised with the facility and depreciated over its useful life. Excluded from the O&M base — fees create no plant to maintain.'},
+  {k:'shellPct',propcoOnly:true,label:'Shell built up-front',unit:'% of facility capex',step:5,pct:true,tog:'facility',info:'Share of facility capex that is the base building — land works, structure, envelope, primary power route. Built once for the whole site in the first construction window rather than tranche by tranche, so it is spent before any MW earns. The remainder is fit-out (power train, cooling, white space) and follows each roadmap tranche.'},
   {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20-25yr.'},
   {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'GPU server resale value at exit, as % of purchase price. H100 held 35-50% at 3yr; 40% is reasonable for a 3yr-old GPU given compute scarcity.'},
   {k:'netResidualPct',gpuOnly:true,label:'Network resale value',unit:'% at exit',step:1,pct:true,info:'Resale value of switches/optics/cabling at exit, as % of purchase price — lower than GPUs. A 3yr-old fabric blends switches ~25-35%, optics ~10-25%, cabling ~5-15%; ~20% is a sensible blend.'},
@@ -548,7 +564,15 @@ function compute(p,tog){
   const psTotal=useFac?mwIT*(p.psPerMW||0):0;
   const facPerServer=(useFac&&useGpu)?facTotal*(gpuMW/Math.max(mwIT,1e-9))/Math.max(1,target):0;
 
-  const lead=usePhase?Math.max(0,Math.round(p.leadMonths||0)):0;
+  // A PropCo hall follows an explicit MW roadmap instead of a linear ramp. The shell for
+  // the whole site is built once, up front; fit-out follows each tranche. The roadmap
+  // already states when capacity goes live, so the generic build lead time does not apply.
+  const road=(!useGpu && Array.isArray(p.roadmap) && p.roadmap.length) ? p.roadmap : null;
+  const roadMW=road?road.reduce((t,r)=>t+Math.max(0,r.mw||0),0):0;
+  const shellTot=road?facTotal*Math.max(0,Math.min(1,p.shellPct||0)):0;
+  const fitTot=road?facTotal-shellTot:0;
+  const shellEnd=road?Math.max(1,Math.round(road[0].m||1)):1; // shell completes with the first tranche
+  const lead=road?0:(usePhase?Math.max(0,Math.round(p.leadMonths||0)):0);
 
   const A=()=>new Array(N+1).fill(0);
   const build=A(),online=A(),capexS=A(),capexN=A(),capexF=A(),capex=A(),cumS=A(),cumN=A(),cumF=A(),util=A(),price=A(),bill=A(),rev=A(),revG=A(),revGm=A(),revC=A(),
@@ -561,12 +585,26 @@ function compute(p,tog){
   let accDeprS=0,accDeprN=0,accDeprF=0,accDeprP=0;
 
   for(let m=1;m<=N;m++){
-    build[m]=Math.min(target, target*Math.min(m,deployM)/deployM);
+    if(road){
+      let cum=0; for(const r of road) if(Math.round(r.m)<=m) cum+=Math.max(0,r.mw||0);
+      build[m]=Math.min(target,cum);
+    } else build[m]=Math.min(target, target*Math.min(m,deployM)/deployM);
     online[m]=(m-lead>=1)?build[m-lead]:0;
     const dBuild=build[m]-build[m-1];
     capexS[m]=useGpu?dBuild*p.serverPrice:0;
     capexN[m]=useGpu?dBuild*p.serverPrice*p.netPct:0;
-    capexF[m]=(build[m]-build[m-1])/Math.max(target,1)*facTotal;
+    if(road){
+      // shell spend spreads evenly over the run-up to first handover
+      let f=(m<=shellEnd)?shellTot/shellEnd:0;
+      // each tranche's fit-out spreads over its own construction window
+      road.forEach((r,i)=>{
+        const end=Math.max(1,Math.round(r.m));
+        const start=(i===0)?1:Math.max(1,Math.round(road[i-1].m))+1;
+        const span=Math.max(1,end-start+1);
+        if(m>=start&&m<=end) f+=fitTot*(Math.max(0,r.mw||0)/Math.max(roadMW,1e-9))/span;
+      });
+      capexF[m]=f;
+    } else capexF[m]=(build[m]-build[m-1])/Math.max(target,1)*facTotal;
     capexP[m]=(m===1)?psTotal:0; // one-time, incurred at kick-off before construction
     capex[m]=capexS[m]+capexN[m]+capexF[m]+capexP[m];
     cumS[m]=cumS[m-1]+capexS[m];
@@ -703,7 +741,7 @@ function compute(p,tog){
 
   const peakEquity=Math.max(0,-Math.min(0,...cumEq.slice(1)));
 
-  return {N,useDebt,useFac,useGA,useWC,useExit,useExitCur,useColo,gpuMW,coloMW,totalCapex,servCapex:useGpu?target*p.serverPrice:0,netCapex,facTotal,psTotal,mwIT,facExit,peakDebt,debtEnd,residual,servResidual,totalDebt,termProj,peakEquity,arEnd:ar[N],
+  return {N,useDebt,useFac,useGA,useWC,useExit,useExitCur,useColo,gpuMW,coloMW,roadMW,shellTot,fitTot,totalCapex,servCapex:useGpu?target*p.serverPrice:0,netCapex,facTotal,psTotal,mwIT,facExit,peakDebt,debtEnd,residual,servResidual,totalDebt,termProj,peakEquity,arEnd:ar[N],
     pIRR,eIRR,projNPV,eqNPV,moic,cashBack:inflow,minDSCR,minICR,totRev,totNI,totEb,
     paybackYears:payM==null?null:payM/12,
     cb,costBasis,margin,marginPct,avgEbMargin,rentMo,useGpu,useTaas,unitPrice,unitStr,
@@ -836,7 +874,9 @@ function dscrChart(yrs){
   const Y=v=>H-pad-(v/max)*(H-2*pad);
   let bars=''; yrs.forEach((y,i)=>{const v=y.dscr; const x=pad+i*gap+gap*0.25;
     const col=v==null?'#dfe3e9':v<1.2?'#d92d3f':'#a5d600';
-    const h=v==null?0:(v/max)*(H-2*pad);
+    // a build year can produce negative CFADS, hence a negative DSCR: clamp the drawn
+    // bar at the axis and let the colour and the printed value carry the sign
+    const h=Math.max(0, v==null?0:(v/max)*(H-2*pad));
     bars+=`<rect x="${x.toFixed(1)}" y="${(H-pad-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="3"/>
       <text x="${(x+bw/2).toFixed(1)}" y="${(H-pad-h-6).toFixed(1)}" fill="#111318" font-size="10.5" font-family="ui-monospace,monospace" text-anchor="middle">${v==null?'n/a':v.toFixed(2)+'x'}</text>
       <text x="${(x+bw/2).toFixed(1)}" y="${H-12}" fill="#5a6270" font-size="10" font-family="ui-monospace,monospace" text-anchor="middle">Y${y.y}</text>`;});
@@ -1150,7 +1190,7 @@ function bindPrimary([k,scale]){
 function buildGroup(id,fields){
   const b=document.getElementById(id);
   const _isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
-  fields=fields.filter(f=>!((f.gpuOnly||f.coreInPropco)&&!_isGpu));
+  fields=fields.filter(f=>!((f.gpuOnly||f.coreInPropco)&&!_isGpu)&&!(f.propcoOnly&&_isGpu));
   const lbl=f=>`<span class="flabel">${f.label}${f.info?`<span class="ttip" data-tip="${f.info.replace(/"/g,'&quot;')}">ⓘ</span>`:''}</span>`;
   // a section header survives only if a visible field follows it
   fields=fields.filter((f,i,arr)=>!f.section||(arr[i+1]&&!arr[i+1].section));
@@ -1169,8 +1209,17 @@ function buildGroup(id,fields){
   refreshDisabled(fields);
 }
 function refreshDisabled(fields){
-  fields.forEach(f=>{if(f.section)return; if(f.tog||f.invTog){const on=f.tog?T[f.tog]:!T[f.invTog];const w=document.getElementById('wrap_'+f.k);
-    if(w){w.style.opacity=on?'1':'.35';document.getElementById('a_'+f.k).disabled=!on;}}});
+  const isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
+  fields.forEach(f=>{
+    if(f.section)return;
+    const el=document.getElementById('a_'+f.k), w=document.getElementById('wrap_'+f.k);
+    if(!el||!w)return;
+    let on=f.tog?T[f.tog]:(f.invTog?!T[f.invTog]:true);
+    if(f.roadmapDriven&&!isGpu)on=false; // the build roadmap owns this number
+    w.style.opacity=on?'1':'.35';
+    el.disabled=!on;
+    el.title=(f.roadmapDriven&&!isGpu)?'Set by the build roadmap':'';
+  });
 }
 function toggle(id){const e=document.getElementById(id);e.classList.toggle('open');
   document.getElementById(id+'_m').textContent=e.classList.contains('open')?'−':'+';}
@@ -1184,7 +1233,7 @@ function bindToggles(){
    value overrides or the capacity mix — so the hall silently fell back to DEF sizing
    while the mix bar still advertised its blend. Run the preset itself instead. */
 function resetAll(){
-  S={...DEF, modes:DEF.modes.map(m=>({...m}))};
+  S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({...r}))};
   T={...TOG};
   PRIM.forEach(bindPrimary);bindGpuCount();bindColo();bindWsShare();bindToggles();
   setProduct(PROD);
@@ -1270,6 +1319,9 @@ function setProduct(id){
   const taasRow=document.getElementById('taasRow'); if(taasRow)taasRow.style.display=taas?'':'none';
   if(taas)renderModes();
   if(!prod.gpu){MIX={...MIX_DEF}; applyMix();} // PropCo halls are built from the capacity mix
+  setSpvFromProduct(prod);
+  if(!prod.gpu)syncRoadmap();
+  renderRoadmap();
   syncInputs(); renderProdBar(); renderModelBar(); renderGradeBar();
   setIdcMode(T.facility);
   render();
@@ -1302,6 +1354,45 @@ function renderGradeBar(){
        value="${Math.round((MIX[g.k]||0)*100)}" oninput="setMixShare('${g.k}',this.value)"><span class="pct">%</span>
       <span class="mixl">${g.name}<span class="mp">${g.sub}</span></span></span>`).join('')+
     `<span id="mixSum">${mixSummary()}</span>`;
+}
+/* ── build roadmap ──────────────────────────────────────────
+   Total site capacity is the sum of the tranches, so coloMW is derived, never typed. */
+function syncRoadmap(){
+  S.coloMW=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+}
+function renderRoadmap(){
+  const d=document.getElementById('d_road'), b=document.getElementById('body_road');
+  if(!d||!b)return;
+  const isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
+  d.style.display=isGpu?'none':''; // GPU fleets ramp by server count, not by MW handover
+  if(isGpu)return;
+  const rows=(S.roadmap||[]).map((r,i)=>{
+    const cum=(S.roadmap||[]).slice(0,i+1).reduce((t,x)=>t+Math.max(0,x.mw||0),0);
+    return `<tr><td style="text-align:left">${r.k}</td>
+      <td><input class="mi" type="number" min="0" step="1" value="${r.mw}" oninput="setRoadMW(${i},this.value)"></td>
+      <td><input class="mi" type="number" min="1" step="1" value="${r.m}" oninput="setRoadMonth(${i},this.value)"></td>
+      <td>${cum}</td></tr>`;}).join('');
+  b.innerHTML=`<table class="modet"><thead><tr><th style="text-align:left">Tranche</th><th>MW</th><th>Month</th><th>Cum MW</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="foot" id="roadFoot">${roadFoot()}</div>`;
+}
+function roadFoot(){
+  const tot=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+  const last=(S.roadmap||[]).reduce((t,r)=>Math.max(t,r.m||0),0);
+  return `${tot} MW total by month ${last} · month 1 = Jan 2026. Shell is built once for the whole site `+
+    `in the run-up to first handover; fit-out follows each tranche.`;
+}
+function setRoadMW(i,v){
+  let x=parseFloat(v); if(isNaN(x)||x<0)x=0;
+  S.roadmap[i].mw=x; syncRoadmap();
+  const f=document.getElementById('roadFoot'); if(f)f.textContent=roadFoot();
+  syncInputs(); render();
+}
+function setRoadMonth(i,v){
+  let x=Math.round(parseFloat(v)); if(isNaN(x)||x<1)x=1;
+  S.roadmap[i].m=x;
+  const f=document.getElementById('roadFoot'); if(f)f.textContent=roadFoot();
+  syncInputs(); render();
 }
 /* live-edit path: never re-render the bar itself, or the field loses focus mid-typing */
 function setMixShare(k,val){
