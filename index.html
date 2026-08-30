@@ -509,7 +509,7 @@ const VAT_RATES={domestic:0.15, export:0};
 const OV_KEYS=[...new Set(PRODUCTS.flatMap(p=>Object.keys(p.ov||{})))];
 /* Data-hall capacity types — the hall is a weighted blend of these, applied in PropCo modes */
 const DC_GRADES={
-  A:{facilityPerMW:11e6, pue:1.45,coloRate:250,rackKW:15},
+  A:{facilityPerMW:12e6, pue:1.45,coloRate:250,rackKW:15},
   B:{facilityPerMW:14e6, pue:1.35,coloRate:328,rackKW:45},
   D:{facilityPerMW:16e6, pue:1.18,coloRate:656,rackKW:200}
 };
