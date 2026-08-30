@@ -650,7 +650,7 @@ function compute(p,tog){
   const A=()=>new Array(N+1).fill(0);
   const build=A(),online=A(),capexS=A(),capexN=A(),capexF=A(),capex=A(),cumS=A(),cumN=A(),cumF=A(),util=A(),price=A(),bill=A(),rev=A(),revG=A(),revGm=A(),revC=A(),
         elec=A(),warr=A(),oth=A(),othF=A(),intR=A(),ga=A(),rentx=A(),trans=A(),ar=A(),dwc=A(),feeA=A(),cashopex=A(),deprS=A(),deprN=A(),deprF=A(),depr=A(),ebitda=A(),ebit=A(),
-        capexP=A(),deprP=A(),dDraw=A(),dRepay=A(),dInt=A(),dBal=A(),pbt=A(),tax=A(),ni=A(),cfo=A(),capexCf=A(),projFcf=A(),eqFcf=A(),cumEq=A();
+        intCap=A(),intPaid=A(),capexP=A(),deprP=A(),dDraw=A(),dRepay=A(),dInt=A(),dBal=A(),pbt=A(),tax=A(),ni=A(),cfo=A(),capexCf=A(),projFcf=A(),eqFcf=A(),cumEq=A();
   const totalCapex=(useGpu?target*p.serverPrice*(1+p.netPct):0)+facTotal+psTotal;
   const netCapex=useGpu?target*p.serverPrice*p.netPct:0;
   const totalDebt=totalCapex*debtPct;
@@ -723,15 +723,25 @@ function compute(p,tog){
     ebitda[m]=rev[m]-cashopex[m];
     ebit[m]=ebitda[m]-depr[m];
     dDraw[m]=capex[m]*debtPct;
-    const amortStart = road?shellEnd:deployM; // first capacity earning, not a GPU install ramp
+    // Construction facilities convert to term debt at completion, not at first
+    // handover: amortising the whole loan while most of the build is still going in
+    // charges full principal against a fraction of the revenue.
+    const amortStart = road?Math.max(...road.map(r=>Math.round(r.m||1))):deployM;
     const repaying = m>amortStart && m<=amortStart+p.debtTenor;
     dRepay[m]=repaying?princPerMo:0;
     const openBal=dBal[m-1];
     dInt[m]=openBal*p.debtRate/12;
-    dBal[m]=openBal+dDraw[m]-dRepay[m];
+    // Standard project-finance practice, and the only way DSCR means anything before
+    // revenue: the facility is interest-only through construction and that interest is
+    // capitalised — funded by the loan, added to the balance, not paid out of a cash
+    // flow that does not exist yet.
+    const preCOD = m<=amortStart;
+    intCap[m]=preCOD?dInt[m]:0;
+    intPaid[m]=dInt[m]-intCap[m];
+    dBal[m]=openBal+dDraw[m]-dRepay[m]+intCap[m];
     if(dBal[m]<1e-6)dBal[m]=0;
     feeA[m]=(m===1&&useDebt)?totalDebt*p.feePct:0;
-    pbt[m]=ebit[m]-dInt[m]-feeA[m];
+    pbt[m]=ebit[m]-intPaid[m]-feeA[m];
     tax[m]=Math.max(0,pbt[m]*taxRate);
     ni[m]=pbt[m]-tax[m];
     cfo[m]=ni[m]+depr[m]-dwc[m];
@@ -743,7 +753,11 @@ function compute(p,tog){
   // target is servers for a GPU fleet but megawatts for a landlord, so this line
   // was valuing 120 MW as if they were 120 servers to resell
   const servResidual=useGpu?target*p.serverPrice*p.residualPct:0;
-  const facNBV=useFac?(facTotal+psFac)*Math.max(0,(p.facilityLife-p.years)/p.facilityLife):0;
+  // The closed form assumed the whole asset was in service from month one, but
+  // depreciation accrues as capex is spent across a multi-year build, so it wrote the
+  // building down faster on exit than the P&L ever charged. Take the book value the
+  // engine actually produced.
+  const facNBV=useFac?Math.max(0,(facTotal+psFac)-(accDeprF+accDeprP)):0;
   let facExit=facNBV, coloLeaseVal=0;
   if(useColo&&useFac&&mwIT>0){
     const gpuShareNBV=facNBV*(gpuMW/mwIT), coloShareNBV=facNBV*(coloMW/mwIT);
@@ -777,7 +791,7 @@ function compute(p,tog){
   const yrs=[];
   for(let y=1;y<=p.years;y++){
     const a=(y-1)*12+1,b=y*12; const sum=arr=>{let s=0;for(let m=a;m<=b;m++)s+=arr[m];return s;};
-    const eb=sum(ebitda),intr=sum(dInt),prin=sum(dRepay),cashtax=sum(tax),dw=sum(dwc),fe=sum(feeA),rn=sum(rentx);
+    const eb=sum(ebitda),intr=sum(intPaid),prin=sum(dRepay),cashtax=sum(tax),dw=sum(dwc),fe=sum(feeA),rn=sum(rentx);
     const cfads=eb-cashtax-dw, ds=intr+prin;
     yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
       depr:sum(depr),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
