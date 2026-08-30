@@ -433,7 +433,7 @@ const DEF={
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.20, netResidualPct:0.20, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000,
-  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25,
+  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, shellPct:0.25, usableIT:0.80,
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
   roadmap:[
@@ -550,6 +550,7 @@ const F_REV=[
   {k:'utilSteady',gpuOnly:true,label:'Utilization — steady',unit:'%',step:1,pct:true,info:'Mature utilisation once ramped. 85% is strong for contracted capacity; hyperscalers assume 70-90%.'},
   {k:'utilRamp',gpuOnly:true,label:'Utilization ramp',unit:'months',step:1,tog:'util',info:'Months to climb from start to steady utilisation as customers onboard.'},
   {k:'arDays',label:'Receivable days (AR)',unit:'days',step:5,tog:'wc',info:'Days between billing and cash collection. Working-capital drag funded by equity until it unwinds.'},
+  {k:'usableIT',propcoOnly:true,label:'Usable IT load',unit:'% of campus power',step:5,pct:true,info:'Share of the campus gross power that reaches the white space as leasable IT load. The rest is cooling, electrical losses and back-of-house. The build roadmap schedules gross power; every rate in this model — build cost, O&M, development fees, lease price — is quoted per MW IT, so they all run off the usable figure.'},
   {k:'coloMW',roadmapDriven:true,label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
   {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Set by the capacity mix: $250/kW/mo for general-purpose colo, rising with power density.'},
   {k:'coloLeaseYears',label:'Colo lease term',unit:'years',step:1,tog:'colo',info:'Colo tenant lease length. 10yr+ is standard and lets the remaining lease be valued as a resale asset at exit.'},
@@ -638,6 +639,7 @@ function compute(p,tog){
   const shellTot=road?facTotal*Math.max(0,Math.min(1,p.shellPct||0)):0;
   const fitTot=road?facTotal-shellTot:0;
   const shellEnd=road?Math.max(1,Math.round(road[0].m||1)):1; // shell completes with the first tranche
+  const usable=road?Math.max(0,Math.min(1,p.usableIT!=null?p.usableIT:1)):1;
   const lead=road?0:(usePhase?Math.max(0,Math.round(p.leadMonths||0)):0);
 
   const A=()=>new Array(N+1).fill(0);
@@ -653,7 +655,7 @@ function compute(p,tog){
   for(let m=1;m<=N;m++){
     if(road){
       let cum=0; for(const r of road) if(Math.round(r.m)<=m) cum+=Math.max(0,r.mw||0);
-      build[m]=Math.min(target,cum);
+      build[m]=Math.min(target,cum*usable); // gross handover -> usable IT load
     } else build[m]=Math.min(target, target*Math.min(m,deployM)/deployM);
     online[m]=(m-lead>=1)?build[m-lead]:0;
     const dBuild=build[m]-build[m-1];
@@ -1075,7 +1077,7 @@ function render(){
     return `<b class="num">${(S.servers*S.gpus).toLocaleString()}</b> GPUs @ <b class="num cy">${money(S.serverPrice)}</b>/node · power <b class="num am">$${S.elec.toFixed(3)}/kWh</b> · selling <b class="num">${mixStr}</b> · blended <b class="num">$${b.rental.toFixed(2)}/GPU-hr</b>${vr>0?` <span class="num am">(+${(vr*100).toFixed(0)}% VAT → $${(b.rental*(1+vr)).toFixed(2)} incl)</span>`:` <span class="num" style="color:var(--pass)">(0% VAT · export)</span>`}${T.decline?` · −${(S.rentalDecline*100).toFixed(0)}%/yr`:''} · <b class="num">${S.years}-yr</b> hold${T.debt?` · <b class="num">${(S.debtPct*100).toFixed(0)}%</b> debt`:' · all-equity'}`;})()
     : o.useGpu?
     `<b class="num">${(S.servers*S.gpus).toLocaleString()}</b> GPUs @ <b class="num cy">${money(S.serverPrice)}</b>/node · power <b class="num am">$${S.elec.toFixed(3)}/kWh</b> · renting <b class="num">$${S.rental.toFixed(2)}/GPU-hr</b>${vr>0?` <span class="num am">(+${(vr*100).toFixed(0)}% VAT → $${(S.rental*(1+vr)).toFixed(2)} incl)</span>`:` <span class="num" style="color:var(--pass)">(0% VAT · export)</span>`}${(T.lock&&S.lockYears>0)?` <span style="color:var(--pass)">locked ${S.lockYears}yr</span>${T.decline?` then spot (−${(S.rentalDecline*100).toFixed(0)}%/yr)`:''}`:(T.decline?` <span>spot, eroding ${(S.rentalDecline*100).toFixed(0)}%/yr</span>`:'')} · <b class="num">${S.years}-yr</b> hold${(T.colo&&T.facility)?` · colo <b class="num am">${S.coloMW}MW @ $${S.coloRate}/kW</b>`:''}${T.debt?` · <b class="num">${(S.debtPct*100).toFixed(0)}%</b> debt`:' · all-equity'}`
-    : `<b class="num">${S.coloMW}</b> MW data hall · dev <b class="num cy">${money(S.facilityPerMW)}</b>/MW · lease <b class="num am">$${S.coloRate}/kW/mo</b>${(T.colo&&S.coloEsc>0)?` +${(S.coloEsc*100).toFixed(1)}%/yr`:''} · PUE <b class="num">${S.pue.toFixed(2)}</b>${S.rackKW>0?` · ~<b class="num">${S.rackKW}</b>kW/rack`:''} · <b class="num">${S.years}-yr</b> hold${T.debt?` · <b class="num">${(S.debtPct*100).toFixed(0)}%</b> debt`:' · all-equity'}`;
+    : `<b class="num">${+S.coloMW.toFixed(1)}</b> MW IT data hall${T.facility?` (${roadGrossMW()} MW campus)`:''} · dev <b class="num cy">${money(S.facilityPerMW)}</b>/MW · lease <b class="num am">$${S.coloRate}/kW/mo</b>${(T.colo&&S.coloEsc>0)?` +${(S.coloEsc*100).toFixed(1)}%/yr`:''} · PUE <b class="num">${S.pue.toFixed(2)}</b>${S.rackKW>0?` · ~<b class="num">${S.rackKW}</b>kW/rack`:''} · <b class="num">${S.years}-yr</b> hold${T.debt?` · <b class="num">${(S.debtPct*100).toFixed(0)}%</b> debt`:' · all-equity'}`;
 
   document.getElementById('out').innerHTML=`
   ${verdict(o)}
@@ -1472,8 +1474,10 @@ function renderGradeBar(){
 }
 /* ── build roadmap ──────────────────────────────────────────
    Total site capacity is the sum of the tranches, so coloMW is derived, never typed. */
+function roadGrossMW(){ return (S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0); }
 function syncRoadmap(){
-  S.coloMW=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+  // the roadmap is campus gross power; every unit rate in the model is per MW IT
+  S.coloMW=+(roadGrossMW()*Math.max(0,Math.min(1,S.usableIT||1))).toFixed(3);
 }
 function renderRoadmap(){
   const d=document.getElementById('d_road'), b=document.getElementById('body_road');
@@ -1551,9 +1555,9 @@ function roadChart(W){
     `<line x1="${padL}" y1="${(H-padB).toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db"/>`+
     ticks+
     (narrow
-      ? `<text x="${(W-padR).toFixed(1)}" y="${(Y(tot)-7).toFixed(1)}" fill="#111318" font-size="12" font-weight="700" font-family="ui-monospace,monospace" text-anchor="end">${tot} MW</text>`
+      ? `<text x="${(W-padR).toFixed(1)}" y="${(Y(tot)-7).toFixed(1)}" fill="#111318" font-size="12" font-weight="700" font-family="ui-monospace,monospace" text-anchor="end">${tot} MW gross</text>`
       : `<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+3).toFixed(1)}" fill="#111318" font-size="15" font-weight="700" font-family="ui-monospace,monospace">${tot}</text>`
-        +`<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+16).toFixed(1)}" fill="#6f7885" font-size="9" letter-spacing="1" font-family="ui-monospace,monospace">MW IT</text>`)+
+        +`<text x="${(W-padR+10).toFixed(1)}" y="${(Y(tot)+16).toFixed(1)}" fill="#6f7885" font-size="9" letter-spacing="1" font-family="ui-monospace,monospace">MW GROSS</text>`)+
     `</svg>`;
 }
 function renderRoadChart(){
@@ -1562,17 +1566,17 @@ function renderRoadChart(){
   if(isGpu){bar.classList.add('hidden'); bar.innerHTML=''; return;}
   bar.classList.remove('hidden');
   const road=S.roadmap||[];
-  const tot=road.reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+  const tot=roadGrossMW();
   const lastYr=road.length?String(road[road.length-1].k).slice(0,4):'';
   bar.innerHTML=`<div class="roadhead"><span class="mlabel">Build roadmap</span>`+
-    `<span class="roadnote">${tot} MW by ${lastYr} · cumulative capacity, stacked by capacity type</span></div>`+
+    `<span class="roadnote">${tot} MW campus power by ${lastYr} · <b class="num" style="color:var(--ink)">${+S.coloMW.toFixed(1)} MW IT</b> usable (${Math.round((S.usableIT||1)*100)}%) · stacked by capacity type</span></div>`+
     roadChart(Math.max(260, Math.round(bar.clientWidth||1000)));
 }
 function roadFoot(){
-  const tot=(S.roadmap||[]).reduce((t,r)=>t+Math.max(0,r.mw||0),0);
+  const tot=roadGrossMW();
   const last=(S.roadmap||[]).reduce((t,r)=>Math.max(t,r.m||0),0);
-  return `${tot} MW total by month ${last} · month 1 = Jan 2026. Shell is built once for the whole site `+
-    `in the run-up to first handover; fit-out follows each tranche.`;
+  return `MW below is campus gross power: ${tot} MW by month ${last}, of which `+
+    `${+S.coloMW.toFixed(1)} MW IT is leasable. Month 1 = Jan 2026.`;
 }
 function setRoadMW(i,v){
   let x=parseFloat(v); if(isNaN(x)||x<0)x=0;
