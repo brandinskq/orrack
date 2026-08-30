@@ -383,7 +383,7 @@ function taasBlended(p){ // fleet-weighted blended $/GPU-hour across modalities
   (p.modes||[]).forEach(m=>{mixSum+=m.mix; rev+=m.mix*modeRevPerHr(m);});
   return {rental: mixSum>0?rev/mixSum:0};
 }
-const TOG={debt:false, decline:true, util:false, phase:true, facility:false, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:false};
+const TOG={debt:false, decline:true, util:false, phase:true, facility:true, lock:true, ga:true, wc:true, exit:false, exitcur:false, colo:true};
 let S={...DEF, modes:DEF.modes.map(m=>({...m}))}, T={...TOG};
 
 /* ═══════════════ GPU model catalogue (turnkey landed prices, mid-2026) ═══════════════ */
@@ -404,9 +404,6 @@ let GRADE='A'; // current AI DC grade (default A)
 /* ═══════════════ product definitions ═══════════════ */
 /* each product = a switch preset + default overrides. Engine unchanged. */
 const PRODUCTS=[
-  {id:'lease', name:'Lease IDC + GaaS', sub:'rent colo space, run GPU cloud — all-equity, asset-light',
-   tog:{facility:false, colo:false, debt:false}, gpu:true,
-   ov:{coloPerKWMo:200}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
    tog:{facility:true, colo:true, debt:false}, gpu:true,
    ov:{}},
@@ -417,7 +414,7 @@ const PRODUCTS=[
    tog:{facility:true, colo:false, debt:false}, gpu:true, taas:true,
    ov:{}},
 ];
-let PROD='lease';
+let PROD='ownbuild';
 let CUST='domestic'; // VAT customer type: 'domestic' (15%) | 'export' (0%, zero-rated services)
 const VAT_RATES={domestic:0.15, export:0};
 /* keys any product preset overrides — reset these to DEF on product switch so a prior preset (e.g. GPU-aaS util 75%) doesn't leak into the next */
