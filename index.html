@@ -447,13 +447,16 @@ let GPU='b300'; // current model id
 /* each product = a switch preset + default overrides. Engine unchanged. */
 const PRODUCTS=[
   {id:'datahall', name:'Data Hall / MW', sub:'self-built AI DC leased out by the MW — PropCo landlord, no GPUs',
-   spv:'AI DC', tog:{facility:true, colo:true, debt:true}, gpu:false,
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0.04}},
+   spv:'AI DC', tog:{facility:true, colo:true, debt:true, exit:true}, gpu:false,
+   // A stabilised campus is sold as a going concern, not liquidated at book value;
+   // costs track Saudi wage growth, not 8%/yr; project debt is termed to the asset,
+   // not to a GPU refresh cycle; maintenance tracks plant, not the price paid for it.
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0.04, exitMult:15, gaInfl:0.03, debtTenor:120, otherPct:0.025}},
   {id:'ownbuild', name:'Own-Build IDC + GaaS', sub:'build the DC, run GPU cloud — all-equity, vertically integrated',
-   spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true}, gpu:true,
+   spv:'GPU as a Service', tog:{facility:true, colo:true, debt:true, exit:false}, gpu:true,
    ov:{}},
   {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
-   spv:'Token as a Service', tog:{facility:true, colo:false, debt:true}, gpu:true, taas:true,
+   spv:'Token as a Service', tog:{facility:true, colo:false, debt:true, exit:false}, gpu:true, taas:true,
    ov:{}},
 ];
 let PROD='datahall';
@@ -524,18 +527,18 @@ const F_COST=[
   {k:'siteRentPerMW',label:'Ground rent (own-build)',unit:'$k/MW IT/yr',step:10,scale:1e3,tog:'facility',info:'Annual ground lease for the land under an owned facility (own-build only). Gulf industrial land is cheap — a minor cost line here.'},
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty already bundled in the node purchase price — no separate support charge during this window. Enterprise HGX systems ship with 3yr. The Warranty & support rate applies only after this period expires.'},
-  {k:'otherPct',label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year. 3.5% aligns with itemised staffing + M&E maintenance at comparable DCs. Escalates annually at the O&M inflation rate (salary growth).'},
+  {k:'otherPct',label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year, escalating at the O&M inflation rate. Comparable DCs run 2-3%. Note it scales with what the plant cost while the work itself tracks the plant, so a higher build cost per MW inflates this line.'},
   {k:'gaPct',label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, leasing &amp; sales, admin, finance — plus, for a GPU business, the software platform (orchestration, inference serving, billing, R&amp;D). Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. A pure IDC landlord runs 3-5%: Digital Realty, a listed global REIT across ~300 sites, carries G&amp;A near 8.6% of revenue, and a single-campus SPV should be leaner. A GPU cloud carries the platform on top, hence 12%.'},
-  {k:'gaInfl',label:'O&M / salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in site staff & O&M, driven mainly by salary escalation.'},
+  {k:'gaInfl',label:'O&M / salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in site staff & O&M, driven mainly by salary escalation. Saudi CPI and wage growth run 2-4%. The lease escalates at its own separate rate, so any gap between the two compounds against the margin.'},
   {section:'Tax'},
   {k:'saudiPct',label:'Saudi / GCC ownership',unit:'%',step:5,pct:true,info:'Share of equity held by Saudi/GCC owners. Effective tax = ownership × 2.5% (Zakat) + (1−ownership) × 20% (foreign CIT). Zakat is technically levied on the Zakat base (net worth), approximated here on profit. 100% Saudi ⇒ 2.5% effective; 0% ⇒ 20%.'},
 ];
 const F_FIN=[
   {k:'debtPct',label:'Term loan (% of capex)',unit:'%',step:5,pct:true,tog:'debt',info:'Senior term loan sized as a share of total capex; repaid in equal monthly principal instalments over the tenor. The remainder is equity. 60% is typical project gearing.'},
   {k:'debtRate',label:'Debt interest rate',unit:'%',step:0.5,pct:true,tog:'debt',info:'All-in annual interest on the loan. Commercial project debt in KSA runs SAIBOR+2-3% ≈ 7-9%.'},
-  {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to fully repay principal. Short tenor crushes early DSCR; matching tenor to asset life is the fix.'},
+  {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to fully repay principal, counted from first capacity handover. Short tenor crushes early DSCR; matching tenor to asset life is the fix. Data centre project debt is typically termed 7-12 years against a 25-year asset.'},
   {k:'feePct',label:'Debt arrangement fee',unit:'% of loan',step:0.25,pct:true,tog:'debt',info:'One-time debt arrangement / structuring fee, % of loan, expensed at close.'},
-  {k:'exitMult',label:'Exit EV/EBITDA',unit:'x',step:0.5,tog:'exit',info:'EV/EBITDA multiple paid by a buyer at exit (going-concern sale). DC sector trades 12-20x; 8x is conservative for GPU cash flows.'},
+  {k:'exitMult',label:'Exit EV/EBITDA',unit:'x',step:0.5,tog:'exit',info:'EV/EBITDA multiple paid by a buyer at exit (going-concern sale). Data centre platform precedents cluster at 18-24x forward EBITDA — InterXion 18.6x, QTS 19.0x, CyrusOne 22.2x, Switch 22.9x, CoreSite 23.7x — with HPC/AI sites higher again. 15x is conservative for contracted colocation; 8x is conservative for GPU cash flows.'},
   {k:'disc',label:'Hurdle / discount rate',unit:'%',step:0.5,pct:true},
 ];
 
