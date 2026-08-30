@@ -1513,7 +1513,7 @@ function roadChart(W){
   // The build-out year is a phase, not a quarter of the story: give it a fixed
   // gutter and spend the rest of the plot on the years that actually deliver MW.
   // The dashed divider marks where the two zones meet.
-  const gut=padL+(W-padL-padR)*0.12;
+  const gut=padL+(W-padL-padR)*0.06;
   const X=m=>m<=firstM ? padL+(m/Math.max(1,firstM))*(gut-padL)
                        : gut+((m-firstM)/Math.max(1,lastM-firstM))*(W-padR-gut);
   const Y=v=>H-padB-(v/tot)*(H-padT-padB);
@@ -1550,7 +1550,7 @@ function roadChart(W){
   });
 
   const bx0=padL, bx1=X(firstM), bw=bx1-bx0;
-  const bandLabel = bw>230 ? 'build-out · no capacity online' : (bw>72 ? 'build-out' : '');
+  const bandLabel = bw>230 ? 'build-out · no capacity online' : (bw>58 ? 'build-out' : '');
   const buildBand=`<rect x="${bx0.toFixed(1)}" y="${padT}" width="${bw.toFixed(1)}" height="${(H-padB-padT).toFixed(1)}" fill="#f7f8fa"/>`
     + `<line x1="${bx1.toFixed(1)}" y1="${padT}" x2="${bx1.toFixed(1)}" y2="${(H-padB).toFixed(1)}" stroke="#ccd2db" stroke-dasharray="3 3"/>`
     + (bandLabel?`<text x="${((bx0+bx1)/2).toFixed(1)}" y="${(padT+13).toFixed(1)}" fill="#6f7885" font-size="${narrow?9:10}" font-family="ui-monospace,monospace" text-anchor="middle">${bandLabel}</text>`:'');
