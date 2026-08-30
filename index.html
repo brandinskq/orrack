@@ -439,7 +439,7 @@ const DEF={
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000, renewUplift:0.10,
-  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPer512:2400000, shellPct:0.25, usableIT:0.80,
+  facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, // $2.4M per 512-GPU pod, expressed per card shellPct:0.25, usableIT:0.80,
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
   // MW IT handed over — campus gross power is this divided by the usable share
@@ -563,7 +563,7 @@ const F_REV=[
 ];
 const F_COST=[
   {section:'CAPEX &amp; residual value'},
-  {k:'psPer512',gpuOnly:true,label:'Deployment / professional fees',unit:'$M / 512 GPUs',step:0.1,scale:1e6,info:'One-time professional services to stand up the GPU fleet — cluster design, integration, fabric bring-up, commissioning — charged per 512-GPU pod and scaled linearly with the fleet, so a part-pod costs its share. Capitalised at kick-off and depreciated over the hold alongside the servers.'},
+  {k:'psPerGpu',gpuOnly:true,label:'Deployment / professional fees',unit:'$ / GPU',step:100,info:'One-time professional services to stand up the GPU fleet — cluster design, integration, fabric bring-up, commissioning. Quoted per card: $4,687.50 is the $2.4M-per-512-GPU pod rate divided down, so it scales with any fleet size. Capitalised when the kit lands and depreciated over the life of the servers it commissions.'},
   {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time pre-construction professional services on an own-build IDC — securing land, business case, IDC design and development management. Benchmarked at $10.6M for 25 MW ($424k per MW IT) and pro-rated to facility size. Incurred at kick-off, capitalised with the facility and depreciated over its useful life. Excluded from the O&M base — fees create no plant to maintain.'},
   {k:'facilityPerMW',gpuOnly:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in facility construction cost per MW IT (own-build) — structure, power train, cooling, white space. Excludes servers, network and depreciation.'},
   {custom:'buildRates',propcoOnly:true,label:'IDC / facility build'},
@@ -633,7 +633,7 @@ function compute(p,tog){
   // stand up, but kept out of the O&M base — fees create no plant to maintain.
   // Two distinct scopes: the hall is developed per MW, the fleet is deployed per pod.
   const psFac=useFac?mwIT*(p.psPerMW||0):0;
-  const psGpu=useGpu?(target*gpus/512)*(p.psPer512||0):0;
+  const psGpu=useGpu?(target*gpus)*(p.psPerGpu||0):0;
   const psTotal=psFac+psGpu;
   const facPerServer=(useFac&&useGpu)?facTotal*(gpuMW/Math.max(mwIT,1e-9))/Math.max(1,target):0;
 
@@ -717,7 +717,7 @@ function compute(p,tog){
     // facility life, the fleet's over the hold. Gating both on useFac left a leased
     // deployment fee capitalised in cash and never charged to the P&L at all.
     const dPF=useFac?Math.min(psFac/(p.facilityLife*12), Math.max(0,psFac-accDeprP)):0; accDeprP+=dPF;
-    const dPG=useGpu?Math.min(psGpu/(p.years*12), Math.max(0,psGpu-accDeprPG)):0; accDeprPG+=dPG;
+    const dPG=useGpu?Math.min(psGpu/((p.gpuLifeYears||p.years)*12), Math.max(0,psGpu-accDeprPG)):0; accDeprPG+=dPG;
     deprP[m]=dPF+dPG;
     depr[m]=deprS[m]+deprN[m]+deprF[m]+deprP[m];
     ebitda[m]=rev[m]-cashopex[m];
@@ -801,7 +801,7 @@ function compute(p,tog){
             net:(p.serverPrice*p.netPct*(1-p.netResidualPct)/(p.years*12)+p.transitMo/Math.max(1,target))/ssBill,
             facility:useFac?(facGpuPerServer/(p.facilityLife*12))/ssBill:0,
             dev:((useFac?psGpuPerServer/(p.facilityLife*12):0)
-                +(gpus/512)*(p.psPer512||0)/(p.years*12))/ssBill,
+                +gpus*(p.psPerGpu||0)/((p.gpuLifeYears||p.years)*12))/ssBill,
             rent:rentPerServerMo/ssBill,
             elec:p.powerKW*p.pue*H*p.elec/ssBill,
             netpower:(p.netPowerKW||0)*p.pue*H*p.elec/ssBill,
