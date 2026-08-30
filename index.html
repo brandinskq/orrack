@@ -238,6 +238,7 @@
   .ratedot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:baseline}
   .ratesum{font-family:var(--mono);font-size:10.5px;color:var(--muted);padding:6px 0 2px;
     border-top:1px solid var(--line);margin-top:4px;text-align:right}
+  .dbody .subhead{font-size:12px;font-weight:600;color:var(--ink);padding:9px 0 1px}
   .mixsum{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.02em}
   /* build roadmap — the mix, extended over time */
   .roadbar{padding:2px 2px 14px}
@@ -472,6 +473,9 @@ const MIX_CC={A:'#7c8492',B:'#a5d600',D:'#1a7fa8'}; // neutral / compute lime / 
 /* lease rate is quoted per capacity type; the blend is what the engine consumes */
 const RATE_DEF={A:DC_GRADES.A.coloRate,B:DC_GRADES.B.coloRate,D:DC_GRADES.D.coloRate};
 let RATES={...RATE_DEF};
+/* build cost is quoted per capacity type too — liquid-cooled halls cost more to build */
+const BUILD_DEF={A:DC_GRADES.A.facilityPerMW,B:DC_GRADES.B.facilityPerMW,D:DC_GRADES.D.facilityPerMW};
+let BUILDS={...BUILD_DEF};
 let MIX={...MIX_DEF}; // capacity split of the data hall, by share of MW IT
 let SPV=''; // SPV / project name — deliberately outside S: Reset clears assumptions, not identity
 function setSpv(v){
@@ -509,7 +513,8 @@ const F_REV=[
 const F_COST=[
   {section:'CAPEX &amp; residual value'},
   {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time pre-construction professional services on an own-build IDC — securing land, business case, IDC design and development management. Benchmarked at $10.6M for 25 MW ($424k per MW IT) and pro-rated to facility size. Incurred at kick-off, capitalised with the facility and depreciated over its useful life. Excluded from the O&M base — fees create no plant to maintain.'},
-  {k:'facilityPerMW',mixDriven:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in facility construction cost per MW IT (own-build) — structure, power train, cooling, white space. Excludes servers, network and depreciation. In Data Hall mode this is set by the capacity mix: $11M/MW for general-purpose colocation, $13.75M for air-cooled AI and $23.375M for liquid-cooled AI.'},
+  {k:'facilityPerMW',gpuOnly:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in facility construction cost per MW IT (own-build) — structure, power train, cooling, white space. Excludes servers, network and depreciation.'},
+  {custom:'buildRates',propcoOnly:true,label:'IDC / facility build'},
   {k:'shellPct',propcoOnly:true,label:'Shell built up-front',unit:'% of facility capex',step:5,pct:true,tog:'facility',info:'Share of facility capex that is the base building — land works, structure, envelope, primary power route. Built once for the whole site in the first construction window rather than tranche by tranche, so it is spent before any MW earns. The remainder is fit-out (power train, cooling, white space) and follows each roadmap tranche.'},
   {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20-25yr.'},
   {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'GPU server resale value at exit, as % of purchase price. H100 held 35-50% at 3yr; 40% is reasonable for a 3yr-old GPU given compute scarcity.'},
@@ -1223,6 +1228,7 @@ function buildGroup(id,fields){
   fields=fields.filter((f,i,arr)=>!f.section||(arr[i+1]&&!arr[i+1].section));
   b.innerHTML=fields.map(f=>{
     if(f.section)return `<div class="gsec">${f.section}</div>`;
+    if(f.custom)return `<div class="subhead">${f.label}</div><div id="${f.custom}"></div>`;
     if(f.options){
       return `<div class="arow" id="wrap_${f.k}">${lbl(f)}
         <span class="val"><select id="a_${f.k}">${f.options.map(v=>`<option value="${v}"${v===S[f.k]?' selected':''}>${v} · ${(v*S.gpus).toLocaleString()} GPU</option>`).join('')}</select><span class="unit">${f.unit}</span></span></div>`;
@@ -1230,15 +1236,16 @@ function buildGroup(id,fields){
     const disp=f.pct?+(S[f.k]*100).toFixed(4):(f.scale?+(S[f.k]/f.scale).toFixed(4):S[f.k]);
     return `<div class="arow" id="wrap_${f.k}">${lbl(f)}
       <span class="val"><input type="number" id="a_${f.k}" step="${f.step}" value="${disp}"><span class="unit">${f.unit}</span></span></div>`;}).join('');
-  fields.forEach(f=>{if(f.section)return; const i=document.getElementById('a_'+f.k);
+  fields.forEach(f=>{if(f.section||f.custom)return; const i=document.getElementById('a_'+f.k);
     if(f.options){i.onchange=()=>{S[f.k]=parseFloat(i.value);render();};return;}
     i.oninput=()=>{let v=parseFloat(i.value);if(isNaN(v))v=0;S[f.k]=f.pct?v/100:(f.scale?v*f.scale:v);render();};});
   refreshDisabled(fields);
+  if(document.getElementById('buildRates'))renderBuildRates();
 }
 function refreshDisabled(fields){
   const isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
   fields.forEach(f=>{
-    if(f.section)return;
+    if(f.section||f.custom)return;
     const el=document.getElementById('a_'+f.k), w=document.getElementById('wrap_'+f.k);
     if(!el||!w)return;
     const src=!isGpu&&(f.roadmapDriven?'roadmap':(f.mixDriven?'mix':''));
@@ -1357,7 +1364,7 @@ function setProduct(id){
   const taasRow=document.getElementById('taasRow'); if(taasRow)taasRow.style.display=taas?'':'none';
   if(taas)renderModes();
   if(prod.gpu)applyGpuFacility();               // GPU halls follow the installed model
-  else{MIX={...MIX_DEF}; RATES={...RATE_DEF}; applyMix(); renderLeaseRates();} // PropCo halls price the mix
+  else{MIX={...MIX_DEF}; RATES={...RATE_DEF}; BUILDS={...BUILD_DEF}; applyMix(); renderLeaseRates();} // PropCo halls price the mix
   // a landlord IS the colocation provider — renting space from one is not a strategy
   // it can choose, and switching facility off would empty the whole model
   const idc=document.getElementById('drv_idc'); if(idc)idc.style.display=prod.gpu?'':'none';
@@ -1382,7 +1389,7 @@ function mixWeights(){
 function applyMix(){
   const w=mixWeights();
   const blend=f=>w.reduce((t,x)=>t+x.w*DC_GRADES[x.k][f],0);
-  S.facilityPerMW=blend('facilityPerMW'); S.pue=blend('pue');
+  S.facilityPerMW=w.reduce((t,x)=>t+x.w*(BUILDS[x.k]||0),0); S.pue=blend('pue');
   S.coloRate=Math.round(w.reduce((t,x)=>t+x.w*(RATES[x.k]||0),0)); S.rackKW=Math.round(blend('rackKW'));
 }
 function mixSummary(){
@@ -1492,6 +1499,7 @@ function setMixShare(k,val){
   applyMix(); syncInputs(); renderRoadChart();
   const el=document.getElementById('mixSum'); if(el)el.innerHTML=mixSummary();
   const rs=document.getElementById('rateSum'); if(rs)rs.innerHTML=leaseBlendNote();
+  const bs=document.getElementById('buildSum'); if(bs)bs.innerHTML=buildBlendNote();
   render();
 }
 function updateWsNote(m){
@@ -1515,6 +1523,27 @@ function bindOcc(){
   n.value=Math.round(S.occupancy*100); r.value=Math.round(S.occupancy*100);
   n.oninput=()=>{let v=parseFloat(n.value);if(isNaN(v))v=0;S.occupancy=v/100;r.value=v;render();};
   r.oninput=()=>{S.occupancy=parseFloat(r.value)/100;n.value=r.value;render();};
+}
+function buildBlendNote(){
+  const w=mixWeights();
+  return `blended ${w.map(x=>`${Math.round(x.w*100)}%`).join(' / ')} → <b class="num" style="color:var(--ink)">$${(S.facilityPerMW/1e6).toFixed(2)}M</b> / MW IT`;
+}
+function renderBuildRates(){
+  const b=document.getElementById('buildRates'); if(!b)return;
+  b.innerHTML=DC_GRADE_LIST.map(g=>
+    `<div class="arow"><span><i class="ratedot" style="background:${MIX_CC[g.k]}"></i>${g.name}</span>
+      <span class="val"><input type="number" id="build_${g.k}" step="0.25" value="${(BUILDS[g.k]/1e6).toFixed(3).replace(/\.?0+$/,'')}"
+        oninput="setBuildRate('${g.k}',this.value)"><span class="unit">$M / MW IT</span></span></div>`).join('')+
+    `<div class="ratesum" id="buildSum">${buildBlendNote()}</div>`;
+}
+/* rebuilding body_cost here would tear out the field being typed into, so this
+   path touches only the summaries and the model */
+function setBuildRate(k,v){
+  let x=parseFloat(v); if(isNaN(x)||x<0)x=0;
+  BUILDS[k]=x*1e6; applyMix();
+  const bs=document.getElementById('buildSum'); if(bs)bs.innerHTML=buildBlendNote();
+  const ms=document.getElementById('mixSum'); if(ms)ms.innerHTML=mixSummary();
+  render();
 }
 function leaseBlendNote(){
   const w=mixWeights();
@@ -1544,6 +1573,7 @@ function syncInputs(){
   const cp=document.getElementById('coloPerKWMo'),cpr=document.getElementById('coloPerKWMo_r');
   if(cp){cp.value=S.coloPerKWMo;} if(cpr){cpr.value=S.coloPerKWMo;}
   const rs=document.getElementById('rateSum'); if(rs)rs.innerHTML=leaseBlendNote();
+  const bs2=document.getElementById('buildSum'); if(bs2)bs2.innerHTML=buildBlendNote();
   const oc=document.getElementById('occupancy'),ocr=document.getElementById('occupancy_r');
   if(oc){oc.value=Math.round(S.occupancy*100);} if(ocr){ocr.value=Math.round(S.occupancy*100);}
   buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);
