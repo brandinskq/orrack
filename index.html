@@ -438,10 +438,10 @@ const DEF={
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
   // MW IT handed over — campus gross power is this divided by the usable share
   roadmap:[
-    {k:'2026',    m:12, mw:3},
-    {k:'2027 Q1', m:15, mw:4},  {k:'2027 Q2', m:18, mw:4},  {k:'2027 Q3', m:21, mw:4},  {k:'2027 Q4', m:24, mw:5},
-    {k:'2028 Q1', m:27, mw:12}, {k:'2028 Q2', m:30, mw:12}, {k:'2028 Q3', m:33, mw:12}, {k:'2028 Q4', m:36, mw:12},
-    {k:'2029 Q1', m:39, mw:13}, {k:'2029 Q2', m:42, mw:13}, {k:'2029 Q3', m:45, mw:13}, {k:'2029 Q4', m:48, mw:13}],
+    {k:'2026',    m:12, mw:4},
+    {k:'2027 Q1', m:15, mw:4},  {k:'2027 Q2', m:18, mw:4},  {k:'2027 Q3', m:21, mw:4},  {k:'2027 Q4', m:24, mw:4},
+    {k:'2028 Q1', m:27, mw:10}, {k:'2028 Q2', m:30, mw:10}, {k:'2028 Q3', m:33, mw:10}, {k:'2028 Q4', m:36, mw:10},
+    {k:'2029 Q1', m:39, mw:15}, {k:'2029 Q2', m:42, mw:15}, {k:'2029 Q3', m:45, mw:15}, {k:'2029 Q4', m:48, mw:15}],
   siteRentPerMW:150000, coloPerKWMo:200,
   arDays:45, feePct:0.01, exitMult:8,
   debtPct:0.60, debtRate:0.08, debtTenor:36, disc:0.12,
@@ -1043,9 +1043,14 @@ function verdict(o){
   const retIRR=T.debt?o.eIRR:o.pIRR;
   const retPass=retIRR!=null && retIRR>=S.disc;
   const fails=(unitPass?0:1)+(debtPass?0:1)+(retPass?0:1);
+  // naming the failing test beats counting it: the reader should not have to
+  // scan three cards to find out which one is red
+  const failed=[!unitPass&&'unit margin', !debtPass&&'debt cover', !retPass&&'return vs hurdle'].filter(Boolean);
   const word=fails===0?['BANKABLE','var(--pass)','all three tests pass']:
-              fails===1?['MARGINAL','var(--power)','one test failing']:
-                        ['UNDERWATER','var(--fail)','two or more tests failing'];
+              fails===1?['MARGINAL','var(--power)',failed[0]+' fails']:
+                        ['UNDERWATER','var(--fail)',
+                          (failed.length>2?failed.slice(0,-1).join(', ')+' and '+failed[failed.length-1]
+                                          :failed.join(' and '))+' fail'];
   const chip=(pass,label,val,ctx)=>`<div class="test">
     <div class="tl">${label}</div>
     <div class="tv" style="color:${pass?'var(--pass)':'var(--fail)'}">${val}</div>
