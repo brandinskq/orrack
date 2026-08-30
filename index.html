@@ -230,6 +230,9 @@
   .mixt .mp{font-size:9px;font-weight:400;color:var(--dim)}
   .mixt:focus-within{border-color:var(--compute)}
   .mixt .mixdot{width:8px;height:8px;border-radius:2px;margin-right:8px;flex:none}
+  .ratedot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:baseline}
+  .ratesum{font-family:var(--mono);font-size:10.5px;color:var(--muted);padding:6px 0 2px;
+    border-top:1px solid var(--line);margin-top:4px;text-align:right}
   .mixsum{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.02em}
   /* build roadmap — the mix, extended over time */
   .roadbar{padding:2px 2px 14px}
@@ -320,9 +323,8 @@
         <div id="modeTable"></div>
       </div>
       <div class="drv" id="leaseRow" style="display:none">
-        <div class="row"><label>Lease rate — to tenants<span class="hint">per kW committed / month</span><span class="ttip" data-tip="Monthly lease rate charged to tenants per kW of committed IT capacity, excl. metered power (tenants pay their own electricity). Blended from the capacity mix — general-purpose colo anchors at $250/kW/mo and denser AI capacity carries a premium. Escalates yearly by the colo escalation rate.">ⓘ</span></label>
-          <div class="val"><input type="number" id="coloRate" step="10"><span class="unit">$ / kW·mo</span></div></div>
-        <input type="range" id="coloRate_r" min="80" max="400" step="10">
+        <div class="row"><label>Lease rate — to tenants<span class="hint">$ / kW committed / month, by capacity type</span><span class="ttip" data-tip="Monthly lease rate charged to tenants per kW of committed IT capacity, excl. metered power (tenants pay their own electricity). Priced per capacity type — denser AI capacity carries a premium — and blended by the capacity mix above. Escalates yearly by the colo escalation rate.">ⓘ</span></label></div>
+        <div id="leaseRates"></div>
       </div>
       <div class="drv" id="occRow" style="display:none">
         <div class="row"><label>Occupancy / lease-up<span class="hint">% of capacity leased</span><span class="ttip" data-tip="Share of sellable capacity actually leased to tenants. Vacant capacity still carries facility depreciation, O&amp;M and G&amp;A, so lower occupancy thins the margin. Stabilised data centres run 85-95%.">ⓘ</span></label>
@@ -462,6 +464,9 @@ const DC_GRADES={
 /* default capacity split of the hall — shares are normalised, so they need not sum to 100 */
 const MIX_DEF={A:0.20,B:0.60,D:0.20};
 const MIX_CC={A:'#7c8492',B:'#a5d600',D:'#1a7fa8'}; // neutral / compute lime / cooling blue
+/* lease rate is quoted per capacity type; the blend is what the engine consumes */
+const RATE_DEF={A:DC_GRADES.A.coloRate,B:DC_GRADES.B.coloRate,D:DC_GRADES.D.coloRate};
+let RATES={...RATE_DEF};
 let MIX={...MIX_DEF}; // capacity split of the data hall, by share of MW IT
 let SPV=''; // SPV / project name — deliberately outside S: Reset clears assumptions, not identity
 function setSpv(v){
@@ -1342,7 +1347,7 @@ function setProduct(id){
   const taasRow=document.getElementById('taasRow'); if(taasRow)taasRow.style.display=taas?'':'none';
   if(taas)renderModes();
   if(prod.gpu)applyGpuFacility();               // GPU halls follow the installed model
-  else{MIX={...MIX_DEF}; applyMix();}          // PropCo halls are built from the capacity mix
+  else{MIX={...MIX_DEF}; RATES={...RATE_DEF}; applyMix(); renderLeaseRates();} // PropCo halls price the mix
   // switches that only steer GPU economics have nothing to say about a landlord
   ['colo','lock','decline','util','phase','exitcur'].forEach(k=>{
     const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
@@ -1365,7 +1370,7 @@ function applyMix(){
   const w=mixWeights();
   const blend=f=>w.reduce((t,x)=>t+x.w*DC_GRADES[x.k][f],0);
   S.facilityPerMW=blend('facilityPerMW'); S.pue=blend('pue');
-  S.coloRate=Math.round(blend('coloRate')); S.rackKW=Math.round(blend('rackKW'));
+  S.coloRate=Math.round(w.reduce((t,x)=>t+x.w*(RATES[x.k]||0),0)); S.rackKW=Math.round(blend('rackKW'));
 }
 function mixSummary(){
   const raw=DC_GRADE_LIST.reduce((t,g)=>t+Math.max(0,MIX[g.k]||0),0);
@@ -1473,6 +1478,7 @@ function setMixShare(k,val){
   MIX[k]=v/100;
   applyMix(); syncInputs(); renderRoadChart();
   const el=document.getElementById('mixSum'); if(el)el.innerHTML=mixSummary();
+  const rs=document.getElementById('rateSum'); if(rs)rs.innerHTML=leaseBlendNote();
   render();
 }
 function updateWsNote(m){
@@ -1497,13 +1503,26 @@ function bindOcc(){
   n.oninput=()=>{let v=parseFloat(n.value);if(isNaN(v))v=0;S.occupancy=v/100;r.value=v;render();};
   r.oninput=()=>{S.occupancy=parseFloat(r.value)/100;n.value=r.value;render();};
 }
-function bindLease(){
-  const n=document.getElementById('coloRate'),r=document.getElementById('coloRate_r');
-  if(!n)return;
-  n.value=S.coloRate; r.value=S.coloRate;
-  n.oninput=()=>{let v=parseFloat(n.value);if(isNaN(v))v=0;S.coloRate=v;r.value=v;buildGroup('body_rev',F_REV);render();};
-  r.oninput=()=>{S.coloRate=parseFloat(r.value);n.value=S.coloRate;buildGroup('body_rev',F_REV);render();};
+function leaseBlendNote(){
+  const w=mixWeights();
+  return `blended ${w.map(x=>`${Math.round(x.w*100)}%`).join(' / ')} → <b class="num" style="color:var(--ink)">$${S.coloRate}</b> / kW&middot;mo`;
 }
+function renderLeaseRates(){
+  const b=document.getElementById('leaseRates'); if(!b)return;
+  b.innerHTML=DC_GRADE_LIST.map(g=>
+    `<div class="arow"><span><i class="ratedot" style="background:${MIX_CC[g.k]}"></i>${g.name}</span>
+      <span class="val"><input type="number" id="rate_${g.k}" step="10" value="${RATES[g.k]}"
+        oninput="setLeaseRate('${g.k}',this.value)"><span class="unit">$ / kW&middot;mo</span></span></div>`).join('')+
+    `<div class="ratesum" id="rateSum">${leaseBlendNote()}</div>`;
+}
+/* editing one type re-blends; the rows themselves are left alone so focus survives */
+function setLeaseRate(k,v){
+  let x=parseFloat(v); if(isNaN(x)||x<0)x=0;
+  RATES[k]=x; applyMix();
+  const el=document.getElementById('rateSum'); if(el)el.innerHTML=leaseBlendNote();
+  buildGroup('body_rev',F_REV); render();
+}
+function bindLease(){ renderLeaseRates(); }
 function syncInputs(){
   PRIM.forEach(([k,scale])=>{const sc=scale||1;const n=document.getElementById(k),r=document.getElementById(k+'_r');
     if(n){n.value=+(S[k]/sc).toFixed(4);} if(r){r.value=S[k]/sc;}});
@@ -1511,8 +1530,7 @@ function syncInputs(){
   if(gc){gc.value=S.servers*S.gpus;} if(gcr){gcr.value=S.servers*S.gpus;}
   const cp=document.getElementById('coloPerKWMo'),cpr=document.getElementById('coloPerKWMo_r');
   if(cp){cp.value=S.coloPerKWMo;} if(cpr){cpr.value=S.coloPerKWMo;}
-  const lr=document.getElementById('coloRate'),lrr=document.getElementById('coloRate_r');
-  if(lr){lr.value=S.coloRate;} if(lrr){lrr.value=S.coloRate;}
+  const rs=document.getElementById('rateSum'); if(rs)rs.innerHTML=leaseBlendNote();
   const oc=document.getElementById('occupancy'),ocr=document.getElementById('occupancy_r');
   if(oc){oc.value=Math.round(S.occupancy*100);} if(ocr){ocr.value=Math.round(S.occupancy*100);}
   buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);
