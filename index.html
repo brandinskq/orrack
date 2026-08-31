@@ -487,11 +487,21 @@ let S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({..
 // ws = wholesale/spot floor $/GPU-hr; od = on-demand retail $/GPU-hr (lowest of AWS/Azure/OCI).
 // Effective rental blends the two by the wholesale sales share (default 65% contract / 35% on-demand).
 const GPU_MODELS=[
-  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12, colo:250},
-  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03, colo:410},
+  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12, colo:250, ps:4687.5},
+  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03, colo:410, ps:9375},
 ];
 const blendRental=(m,s)=>s*m.ws+(1-s)*m.od; // s = wholesale share (0..1)
-let GPU='b300'; // current model id
+// The model outlived the page: picking GB300 and refreshing dropped you back on
+// B300, which reads as the numbers changing rather than the selection resetting.
+// URL first so a link can open on a given model and be shared that way, then the
+// last local choice. Both reads are guarded — a private window or blocked site
+// data throws on access rather than returning empty.
+let GPU=(()=>{
+  const ids=GPU_MODELS.map(m=>m.id);
+  try{const q=new URLSearchParams(location.search).get('gpu'); if(q&&ids.includes(q))return q;}catch(e){}
+  try{const v=localStorage.getItem('or.gpu'); if(v&&ids.includes(v))return v;}catch(e){}
+  return 'b300';
+})(); // current model id
 
 /* ═══════════════ product definitions ═══════════════ */
 /* each product = a switch preset + default overrides. Engine unchanged. */
@@ -1419,25 +1429,31 @@ function renderModelBar(){
 function setModel(id){
   const m=GPU_MODELS.find(x=>x.id===id); if(!m)return;
   GPU=id;
-  S.gpus=m.gpus; S.powerKW=m.power; S.netPowerKW=+(m.power*0.10).toFixed(2); S.serverPrice=m.cost;
-  S.rental=blendRental(m,S.wsShare); // 65/35 wholesale/on-demand blend by default
-  if(m.net!=null)S.netPct=m.net; // GB300 rack bundles NVLink → only inter-rack fabric is extra
-  // The hall charges by what it takes to cool the thing. A 250kW liquid-cooled rack
-  // sits in the AI DC's liquid tier at $410/kW/mo; a 14kW air-cooled node sits in the
-  // air tier at $328. One shared field meant repricing for one model silently
-  // repriced the other.
-  if(m.colo!=null)S.coloPerKWMo=m.colo;
+  try{localStorage.setItem('or.gpu',id);}catch(e){}
+  try{const u=new URL(location.href); u.searchParams.set('gpu',id); history.replaceState(null,'',u);}catch(e){}
+  applyGpuFacility(m); // every field the model owns, in one place
   updateWsNote(m);
-
-  applyGpuFacility(m);
   syncInputs(); renderGpuRates(); renderModelBar(); render();
 }
 /* A GPU fleet's hall is sized by the model it houses, not by the PropCo capacity mix.
    Re-applied on product switch so a blended PropCo figure never leaks into a GPU product. */
 function applyGpuFacility(m){
   m=m||GPU_MODELS.find(x=>x.id===GPU); if(!m)return;
+  // Everything the model owns, applied in one place, on every entry path. Split between
+  // setModel and here — with setProduct calling only here — opening on ?gpu=gb300 gave
+  // GB300's price against B300's hardware. One list, and switching cannot leave a trace
+  // of the other model behind.
+  S.gpus=m.gpus; S.powerKW=m.power; S.netPowerKW=+(m.power*0.10).toFixed(2); S.serverPrice=m.cost;
+  // The roadmap counts cards; the fleet counts boxes. Changing cards-per-box without
+  // redividing left 7,714 B300 nodes standing in as 7,714 GB300 racks — 555,408 cards
+  // against a roadmap of 61,712, and a deployment bill nine times what it should be.
+  if(typeof syncRoadmap==='function')syncRoadmap();
+  if(m.net!=null)S.netPct=m.net;
+  if(m.colo!=null)S.coloPerKWMo=m.colo;
+  if(m.ps!=null)S.psPerGpu=m.ps;   // a 72-GPU NVLink rack is not commissioned like a node
   if(m.liquid){S.facilityPerMW=16000000; S.pue=1.25;} // liquid AI hall (GB300)
   else{S.facilityPerMW=12000000; S.pue=1.45;}          // air-cooled AI-ready
+  S.rental=blendRental(m,S.wsShare);
 }
 /* ── Token-as-a-Service modality mix table ── */
 function renderModes(){
