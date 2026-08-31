@@ -437,7 +437,7 @@ const DEF={
   servers:128, gpus:8, deployMonths:3, leadMonths:2, lockYears:5,
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.025,
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
-  powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:3, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
+  powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:5, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.90, rackKW:0,
   gaPct:0.12, gaInfl:0.08, omPerMWYr:1500000, renewUplift:0.10,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, shellPct:0.25, usableIT:0.80, // psPerGpu = $2.4M per 512-GPU pod, expressed per card
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
@@ -575,7 +575,7 @@ const F_COST=[
   {k:'pue',gpuOnly:true,label:'PUE',unit:'x',step:0.05,info:'Power Usage Effectiveness — total facility power ÷ IT power. Air-cooled ~1.4-1.5; liquid-cooled ~1.2-1.3. Multiplies the electricity bill.'},
   {k:'siteRentPerMW',label:'Ground rent (own-build)',unit:'$k/MW IT/yr',step:10,scale:1e3,tog:'facility',info:'Annual ground lease for the land under an owned facility (own-build only).',infoPropco:'Annual ground lease for the land under an owned facility. Zero here because the all-in IDC O&M rate above already covers it — charging it twice would overstate the cost.'},
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
-  {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty already bundled in the node purchase price — no separate support charge during this window. Enterprise HGX systems ship with 3yr. The Warranty & support rate applies only after this period expires.'},
+  {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty bundled in the node purchase price — no separate support charge during this window, counted from each tranche&#39;s own delivery. Blackwell-generation systems ship with 5yr where the H100 generation shipped with 3yr; at a 5-year holding period that covers the kit for its whole life, and matters again at resale because cover still running is worth a premium in the secondary market. If the vendor charges for the extension, add it to the node price rather than here.'},
   {k:'otherPct',gpuOnly:true,label:'IDC O&M',unit:'% capex/yr',step:0.5,pct:true,info:'IDC operations & maintenance — on-site engineers, NOC, facility O&M and M&E maintenance, as % of total capex per year, escalating at the O&M inflation rate.'},
   {k:'omPerMWYr',propcoOnly:true,label:'IDC O&M',unit:'$M / MW IT / yr',step:0.1,scale:1e6,info:'All-in operating cost per MW of IT capacity under management: on-site engineers, NOC, M&E maintenance, security, insurance — and, on this product, ground rent and corporate overhead too, which is why those two lines are zeroed rather than charged again. Escalates at the O&M inflation rate. Excludes electricity: the end user meters and pays power directly.'},
   {k:'gaPct',gpuOnly:true,label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.'},
@@ -824,7 +824,10 @@ function compute(p,tog){
             rent:rentPerServerMo/ssBill,
             elec:p.powerKW*p.pue*H*p.elec/ssBill,
             netpower:(p.netPowerKW||0)*p.pue*H*p.elec/ssBill,
-            warr:p.serverPrice*(1+p.netPct)*p.warrantyPct/12/ssBill*Math.max(0,(p.years-(p.warrantyInclYears||0))/p.years),
+            // the share of a machine's own life spent out of cover, not of the hold:
+            // a 5-year machine under 5-year warranty never pays, however long the hold runs
+            warr:(()=>{const L=p.gpuLifeYears||p.years;
+              return p.serverPrice*(1+p.netPct)*p.warrantyPct/12/ssBill*Math.max(0,(L-(p.warrantyInclYears||0))/L);})(),
             oth:(p.serverPrice*(1+p.netPct)+facGpuPerServer)*p.otherPct/12/ssBill,
             ga:useGA?p.gaPct*baseRental:0};
     costBasis=cb.depr+cb.net+cb.facility+cb.dev+cb.rent+cb.elec+cb.netpower+cb.warr+cb.oth+cb.ga;
@@ -1215,7 +1218,7 @@ function render(){
       ${o.useColo?plRow('Colocation revenue',o.yrs.map(y=>y.revC)):''}
       ${plRow(o.useColo?'Total revenue':'Revenue',o.yrs.map(y=>y.rev),o.useColo)}
       ${o.useGpu?plRow('Electricity',o.yrs.map(y=>-y.elec)):''}
-      ${o.useGpu?plRow('Warranty & support',o.yrs.map(y=>-y.warr)):''}
+      ${o.useGpu&&o.yrs.some(y=>y.warr>0)?plRow('Warranty & support',o.yrs.map(y=>-y.warr)):''}
       ${o.yrs.some(y=>y.trans>0)?plRow('Network transit',o.yrs.map(y=>-y.trans)):''}
       ${plRow('IDC O&M',o.yrs.map(y=>-y.oth))}
       ${o.yrs.some(y=>y.rent>0)?plRow(o.useFac?'Site ground rent':'Colocation fees',o.yrs.map(y=>-y.rent)):''}
