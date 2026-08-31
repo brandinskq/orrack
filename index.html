@@ -487,8 +487,22 @@ let S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({..
 // ws = wholesale/spot floor $/GPU-hr; od = on-demand retail $/GPU-hr (lowest of AWS/Azure/OCI).
 // Effective rental blends the two by the wholesale sales share (default 65% contract / 35% on-demand).
 const GPU_MODELS=[
-  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12, colo:250, ps:4687.5},
-  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03, colo:410, ps:9375},
+  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12, colo:250, ps:4687.5,
+   road:[
+    {k:'2026',m:12,g:1024},{k:'2027 H1',m:18,g:2048},{k:'2027 H2',m:24,g:2024},
+    {k:'2028 H1',m:30,g:5144},{k:'2028 H2',m:36,g:10240},{k:'2029 H1',m:42,g:10240},
+    {k:'2029 H2',m:48,g:30992},
+    {k:'2031 H2',m:72,g:1024,r:1},{k:'2032 H1',m:78,g:2048,r:1},{k:'2032 H2',m:84,g:2024,r:1},
+    {k:'2033 H1',m:90,g:5144,r:1},{k:'2033 H2',m:96,g:10240,r:1},{k:'2034 H1',m:102,g:10240,r:1},
+    {k:'2034 H2',m:108,g:30992,r:1}]},
+  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03, colo:410, ps:9375,
+   road:[
+    {k:'2026',m:12,g:1080},{k:'2027 H1',m:18,g:2088},{k:'2027 H2',m:24,g:1944},
+    {k:'2028 H1',m:30,g:5112},{k:'2028 H2',m:36,g:10224},{k:'2029 H1',m:42,g:10296},
+    {k:'2029 H2',m:48,g:30960},
+    {k:'2031 H2',m:72,g:1080,r:1},{k:'2032 H1',m:78,g:2088,r:1},{k:'2032 H2',m:84,g:1944,r:1},
+    {k:'2033 H1',m:90,g:5112,r:1},{k:'2033 H2',m:96,g:10224,r:1},{k:'2034 H1',m:102,g:10296,r:1},
+    {k:'2034 H2',m:108,g:30960,r:1}]},
 ];
 const blendRental=(m,s)=>s*m.ws+(1-s)*m.od; // s = wholesale share (0..1)
 // The model outlived the page: picking GB300 and refreshing dropped you back on
@@ -1439,21 +1453,24 @@ function setModel(id){
    Re-applied on product switch so a blended PropCo figure never leaks into a GPU product. */
 function applyGpuFacility(m){
   m=m||GPU_MODELS.find(x=>x.id===GPU); if(!m)return;
-  // Everything the model owns, applied in one place, on every entry path. Split between
-  // setModel and here — with setProduct calling only here — opening on ?gpu=gb300 gave
-  // GB300's price against B300's hardware. One list, and switching cannot leave a trace
-  // of the other model behind.
+  // Everything the model owns, applied in one place, on every entry path, and in an order
+  // that matters: cards-per-box, then that model's own roadmap, then the division of one
+  // by the other. These used to be split between setModel and here while setProduct
+  // called only here, so opening on ?gpu=gb300 produced GB300's price against B300's
+  // hardware, and a rate written into the product preset stuck to whichever model was
+  // showing. A roadmap in cards also has to divide into whole boxes — 1,024 cards is 128
+  // B300 nodes but 14.2 GB300 racks — so each model carries its own schedule, the GB300
+  // one stepping in multiples of 72 from 1,080 along the same curve to the same fleet.
   S.gpus=m.gpus; S.powerKW=m.power; S.netPowerKW=+(m.power*0.10).toFixed(2); S.serverPrice=m.cost;
-  // The roadmap counts cards; the fleet counts boxes. Changing cards-per-box without
-  // redividing left 7,714 B300 nodes standing in as 7,714 GB300 racks — 555,408 cards
-  // against a roadmap of 61,712, and a deployment bill nine times what it should be.
-  if(typeof syncRoadmap==='function')syncRoadmap();
   if(m.net!=null)S.netPct=m.net;
   if(m.colo!=null)S.coloPerKWMo=m.colo;
-  if(m.ps!=null)S.psPerGpu=m.ps;   // a 72-GPU NVLink rack is not commissioned like a node
+  if(m.ps!=null)S.psPerGpu=m.ps;
+  if(m.road)S.gpuRoadmap=m.road.map(r=>({...r}));
   if(m.liquid){S.facilityPerMW=16000000; S.pue=1.25;} // liquid AI hall (GB300)
   else{S.facilityPerMW=12000000; S.pue=1.45;}          // air-cooled AI-ready
   S.rental=blendRental(m,S.wsShare);
+  if(typeof syncRoadmap==='function')syncRoadmap();   // fleet = roadmap cards / cards per box
+  if(typeof renderRoadmap==='function'){renderRoadmap();renderRoadChart();}
 }
 /* ── Token-as-a-Service modality mix table ── */
 function renderModes(){
