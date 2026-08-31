@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>AI Infrastructure Investment Model</title>
+<title>Data Hall — AI DC Investment Model</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -307,13 +307,14 @@
 
 <div class="tape">
   <div class="brandwrap">
-    <div class="wordmark">O&amp;R<span class="wm-sub">AI DC &amp; GaaS BP</span></div>
+    <div class="wordmark">O&amp;R<span class="wm-sub">AI Data Hall BP</span></div>
     <span class="online-badge"><span class="dot"></span>MODEL · LIVE</span>
     <span class="spvwrap"><span class="spvl">SPV</span><input id="spvName" class="spvi" type="text"
       maxlength="60" placeholder="Name this SPV" oninput="setSpv(this.value)"></span>
   </div>
   <div class="actions">
     <a class="xlink" href="https://or-gaas.vercel.app/" target="_blank" rel="noopener">GPU as a Service <span class="arr">&#8599;</span></a>
+    <a class="xlink" href="https://or-token.vercel.app/" target="_blank" rel="noopener">Token as a Service <span class="arr">&#8599;</span></a>
     <button class="btn" onclick="preset('saudi')">Saudi power</button>
     <button class="btn solid" onclick="resetAll()">Reset</button>
   </div>
@@ -505,9 +506,6 @@ const PRODUCTS=[
    // under the covenant while every later year clears it comfortably. Stretching the
    // tenor fixes the shape without asking equity for another dollar.
    ov:{coloMW:10, coloRate:180, years:20, gaPct:0, siteRentPerMW:150000, omPerMWYr:1350000, gaInfl:0.03, debtTenor:144}},
-  {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
-   spv:'Token as a Service', tog:{facility:true, colo:false, debt:true, exit:false}, gpu:true, taas:true,
-   ov:{}},
 ];
 let PROD='datahall';
 let CUST='domestic'; // VAT customer type: 'domestic' (15%) | 'export' (0%, zero-rated services)
@@ -533,7 +531,7 @@ let MIX={...MIX_DEF}; // capacity split of the data hall, by share of MW IT
 let SPV=''; // SPV / project name — deliberately outside S: Reset clears assumptions, not identity
 function setSpv(v){
   SPV=(v||'').trim();
-  document.title = SPV ? `${SPV} — AI DC & GaaS BP` : 'AI Infrastructure Investment Model';
+  document.title = SPV ? `${SPV} — AI Data Hall BP` : 'Data Hall — AI DC Investment Model';
 }
 /* each product is its own SPV — switching product switches the vehicle it names */
 function setSpvFromProduct(prod){
@@ -1403,7 +1401,9 @@ function preset(name){if(name==='saudi'){S.elec=0.047;}PRIM.forEach(bindPrimary)
 
 /* ═══════════════ product & model selectors ═══════════════ */
 function renderProdBar(){
-  document.getElementById('prodbar').innerHTML=PRODUCTS.map((p,i)=>
+  const bar=document.getElementById('prodbar');
+  if(PRODUCTS.length<2){bar.style.display='none';bar.innerHTML='';return;} // nothing to choose between
+  bar.innerHTML=PRODUCTS.map((p,i)=>
     `<button class="prodcard ${p.id===PROD?'on':''}" onclick="setProduct('${p.id}')">
       <div class="pn"><span class="pnum">${String(i+1).padStart(2,'0')}</span>${p.name}</div><div class="ps">${p.sub}</div></button>`).join('');
 }
