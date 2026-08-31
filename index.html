@@ -432,7 +432,7 @@
 <script>
 /* ═══════════════ defaults & fields ═══════════════ */
 const DEF={
-  serverPrice:8500000, elec:0.047, rental:7.76, years:5, netPct:0.12, transitMo:0,
+  serverPrice:790000, elec:0.047, rental:7.76, years:5, netPct:0.12, transitMo:0,
   wsShare:0.70, // GPU sales mix: 70% wholesale/contract, 30% on-demand — blends the rental
 
   servers:128, gpus:8, deployMonths:3, leadMonths:2, lockYears:5,
@@ -487,8 +487,8 @@ let S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({..
 // ws = wholesale/spot floor $/GPU-hr; od = on-demand retail $/GPU-hr (lowest of AWS/Azure/OCI).
 // Effective rental blends the two by the wholesale sales share (default 65% contract / 35% on-demand).
 const GPU_MODELS=[
-  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:8500000, liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12},
-  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:6300000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03},
+  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12},
+  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03},
 ];
 const blendRental=(m,s)=>s*m.ws+(1-s)*m.od; // s = wholesale share (0..1)
 let GPU='b300'; // current model id
