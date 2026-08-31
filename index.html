@@ -487,8 +487,8 @@ let S={...DEF, modes:DEF.modes.map(m=>({...m})), roadmap:DEF.roadmap.map(r=>({..
 // ws = wholesale/spot floor $/GPU-hr; od = on-demand retail $/GPU-hr (lowest of AWS/Azure/OCI).
 // Effective rental blends the two by the wholesale sales share (default 65% contract / 35% on-demand).
 const GPU_MODELS=[
-  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12},
-  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03},
+  {id:'b300',  name:'B300',        gpus:8,  power:14.0, cost:790000,  liquid:false, unit:'node', ws:5.06,  od:16.10, net:0.12, colo:250},
+  {id:'gb300', name:'GB300 NVL72', gpus:72, power:140,  cost:8500000, liquid:true,  unit:'rack', ws:12.00, od:38.64, net:0.03, colo:410},
 ];
 const blendRental=(m,s)=>s*m.ws+(1-s)*m.od; // s = wholesale share (0..1)
 let GPU='b300'; // current model id
@@ -1422,6 +1422,11 @@ function setModel(id){
   S.gpus=m.gpus; S.powerKW=m.power; S.netPowerKW=+(m.power*0.10).toFixed(2); S.serverPrice=m.cost;
   S.rental=blendRental(m,S.wsShare); // 65/35 wholesale/on-demand blend by default
   if(m.net!=null)S.netPct=m.net; // GB300 rack bundles NVLink → only inter-rack fabric is extra
+  // The hall charges by what it takes to cool the thing. A 250kW liquid-cooled rack
+  // sits in the AI DC's liquid tier at $410/kW/mo; a 14kW air-cooled node sits in the
+  // air tier at $328. One shared field meant repricing for one model silently
+  // repriced the other.
+  if(m.colo!=null)S.coloPerKWMo=m.colo;
   updateWsNote(m);
 
   applyGpuFacility(m);
