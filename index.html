@@ -572,8 +572,8 @@ const DC_GRADE_LIST=[
 
 const F_REV=[
   {k:'gpus',gpuOnly:true,label:'GPUs per server',unit:'#',step:1,info:'GPUs per node. HGX/DGX B300 is 8. Sets GPU-count rounding and per-node power.'},
-  {k:'deployMonths',gpuOnly:true,label:'Deployment period',unit:'months',step:1,tog:'phase',info:'Months to install all GPUs (staged capex). Capacity comes online gradually, not day one.'},
-  {k:'leadMonths',gpuOnly:true,label:'Build lead time',unit:'months (capex→rev)',step:1,tog:'phase',info:'Commissioning gap between spending capex and earning revenue — money out, debt clock running, no income. The deepest part of the Year-1 cash hole.'},
+  {k:'deployMonths',gpuOnly:true,roadmapDead:true,label:'Deployment period',unit:'months',step:1,tog:'phase',info:'Months to install all GPUs (staged capex). Capacity comes online gradually, not day one.'},
+  {k:'leadMonths',gpuOnly:true,roadmapDead:true,label:'Build lead time',unit:'months (capex→rev)',step:1,tog:'phase',info:'Commissioning gap between spending capex and earning revenue — money out, debt clock running, no income. The deepest part of the Year-1 cash hole.'},
   {k:'lockYears',gpuOnly:true,label:'Contract lock period',unit:'years',step:1,tog:'lock',info:'Years the rental price is contractually fixed. The single most important bankability lever — locked revenue is what makes the debt serviceable.'},
   {k:'rentalDecline',gpuOnly:true,label:'Market erosion / yr',unit:'%',step:1,pct:true,tog:'decline',info:'Annual decline in market GPU-hour price as newer silicon ships. Applies after the lock period expires. H100 fell ~40%/yr post-peak.'},
   {k:'utilStart',gpuOnly:true,label:'Utilization — start',unit:'%',step:1,pct:true,tog:'util',info:'Billed hours ÷ available hours in month 1. New clusters ramp from partial fill; 45% reflects early lease-up.'},
@@ -1359,6 +1359,12 @@ function buildGroup(id,fields){
   const b=document.getElementById(id);
   const _isGpu=(PRODUCTS.find(p=>p.id===PROD)||{}).gpu!==false;
   fields=fields.filter(f=>!((f.gpuOnly||f.coreInPropco)&&!_isGpu)&&!(f.propcoOnly&&_isGpu));
+  // A GPU roadmap states when every tranche lands, which leaves nothing for the install
+  // ramp to say: build[m] reads the roadmap and lead is forced to 0 whenever one exists.
+  // Filtered here rather than hidden in the DOM — syncInputs rebuilds these panels, so a
+  // display:none set anywhere else is wiped on the next keystroke.
+  const _hasGpuRoad=_isGpu&&Array.isArray(S.gpuRoadmap)&&S.gpuRoadmap.length>0;
+  fields=fields.filter(f=>!(f.roadmapDead&&_hasGpuRoad));
   const txt=f=>({lab:(!_isGpu&&f.labelPropco)||f.label, inf:(!_isGpu&&f.infoPropco)||f.info});
   const lbl=f=>{const t=txt(f);return `<span class="flabel">${t.lab}${t.inf?`<span class="ttip" data-tip="${t.inf.replace(/"/g,'&quot;')}">ⓘ</span>`:''}</span>`;};
   // a section header survives only if a visible field follows it
