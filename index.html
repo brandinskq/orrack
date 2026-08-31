@@ -500,7 +500,11 @@ const PRODUCTS=[
    // A stabilised campus is sold as a going concern, not liquidated at book value;
    // costs track Saudi wage growth, not 8%/yr; project debt is termed to the asset,
    // not to a GPU refresh cycle; maintenance tracks plant, not the price paid for it.
-   ov:{coloMW:10, coloRate:180, years:20, gaPct:0, siteRentPerMW:0, gaInfl:0.03, debtTenor:120}},
+   // 144 months, not 120: straight-line principal against rent that escalates 2.5%/yr
+   // makes the first operating year the binding one every time, and at 120 it lands
+   // under the covenant while every later year clears it comfortably. Stretching the
+   // tenor fixes the shape without asking equity for another dollar.
+   ov:{coloMW:10, coloRate:180, years:20, gaPct:0, siteRentPerMW:0, gaInfl:0.03, debtTenor:144}},
   {id:'taas', name:'Token as a Service', sub:'own GPU fleet, sell inference tokens — usage-metered AI cloud',
    spv:'Token as a Service', tog:{facility:true, colo:false, debt:true, exit:false}, gpu:true, taas:true,
    ov:{}},
@@ -587,7 +591,7 @@ const F_FIN=[
   {k:'debtPct',label:'Term loan (% of capex)',unit:'%',step:5,pct:true,tog:'debt',info:'Senior term loan sized as a share of total capex; repaid in equal monthly principal instalments over the tenor. The remainder is equity. 60% is typical project gearing.'},
   {k:'debtRate',label:'Debt interest rate',unit:'%',step:0.5,pct:true,tog:'debt',info:'All-in annual interest on the loan. Commercial project debt in KSA runs SAIBOR+2-3% ≈ 7-9%.'},
   {k:'dscrCov',label:'DSCR covenant',unit:'x minimum',step:0.05,tog:'debt',info:'Minimum debt service coverage the facility must maintain. Data centre paper is quoted at 1.35-1.45x, and CMBS at 1.30-1.45x; term sheets usually set two levels, a lock-up that suspends distributions to equity and a lower one that is an event of default. This is the lock-up level, and the verdict tests against it.'},
-  {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to fully repay principal, counted from first capacity handover. Short tenor crushes early DSCR; matching tenor to asset life is the fix. Data centre project debt is typically termed 7-12 years against a 25-year asset.'},
+  {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to fully repay principal, counted from first capacity handover. Short tenor crushes early DSCR; matching tenor to asset life is the fix. Data centre project debt is typically termed 7-12 years against a 25-year asset. At 144mo the loan still matures with 13 years of facility life left, and the lease renewal falls in repayment year 7 — mid-loan, where cover is ~1.9x — not at the tail, where it runs above 3x.'},
   {k:'feePct',label:'Debt arrangement fee',unit:'% of loan',step:0.25,pct:true,tog:'debt',info:'One-time debt arrangement / structuring fee, % of loan, expensed at close.'},
   {k:'exitMult',label:'Exit EV/EBITDA',unit:'x',step:0.5,tog:'exit',info:'EV/EBITDA multiple paid by a buyer at exit (going-concern sale). Data centre platform precedents cluster at 18-24x forward EBITDA — InterXion 18.6x, QTS 19.0x, CyrusOne 22.2x, Switch 22.9x, CoreSite 23.7x — with HPC/AI sites higher again. 15x is conservative for contracted colocation; 8x is conservative for GPU cash flows.'},
   {k:'disc',label:'Hurdle / discount rate',unit:'%',step:0.5,pct:true},
