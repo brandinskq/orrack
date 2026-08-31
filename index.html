@@ -1085,11 +1085,20 @@ function verdict(o){
   // naming the failing test beats counting it: the reader should not have to
   // scan three cards to find out which one is red
   const failed=[!unitPass&&'unit margin', !debtPass&&'debt cover', !retPass&&'return vs hurdle'].filter(Boolean);
-  const word=fails===0?['BANKABLE','var(--pass)','all three tests pass']:
-              fails===1?['MARGINAL','var(--power)',failed[0]+' fails']:
-                        ['UNDERWATER','var(--fail)',
-                          (failed.length>2?failed.slice(0,-1).join(', ')+' and '+failed[failed.length-1]
-                                          :failed.join(' and '))+' fail'];
+  // Passing is not one thing. A deal clearing the covenant by half again and beating
+  // the hurdle twice over is not the same proposition as one scraping both, and
+  // giving them the same word throws that away.
+  const cov=S.dscrCov||1.35;
+  const strongDebt=!T.debt||o.minDSCR==null||o.minDSCR>=cov*1.5;
+  const strongRet=retIRR!=null&&retIRR>=S.disc*2;
+  const word=fails===0
+      ?(strongDebt&&strongRet
+        ?['ATTRACTIVE','var(--pass)',`clears every test — ${T.debt&&o.minDSCR!=null?o.minDSCR.toFixed(2)+'x cover vs '+cov.toFixed(2)+'x, ':''}${retIRR!=null?(retIRR*100).toFixed(0)+'% vs '+(S.disc*100).toFixed(0)+'% hurdle':''}`]
+        :['BANKABLE','var(--power)','all three tests pass'])
+      :fails===1?['MARGINAL','#e07a1f',failed[0]+' fails']
+                :['UNDERWATER','var(--fail)',
+                  (failed.length>2?failed.slice(0,-1).join(', ')+' and '+failed[failed.length-1]
+                                  :failed.join(' and '))+' fail'];
   const chip=(pass,label,val,ctx)=>`<div class="test">
     <div class="tl">${label}</div>
     <div class="tv" style="color:${pass?'var(--pass)':'var(--fail)'}">${val}</div>
