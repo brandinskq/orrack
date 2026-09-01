@@ -251,6 +251,10 @@
   .ratesum{font-family:var(--mono);font-size:10.5px;color:var(--muted);padding:6px 0 2px;
     border-top:1px solid var(--line);margin-top:4px;text-align:right}
   .dbody .subhead{font-size:12px;font-weight:600;color:var(--ink);padding:9px 0 1px}
+  .omsum{cursor:pointer;user-select:none}
+  .omsum:hover .flabel{color:var(--ink)}
+  .omsum .omcar{display:inline-block;width:12px;color:var(--dim);font-size:9px}
+  .omsum .num{color:var(--ink);font-weight:700}
   .mixsum{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.02em}
   /* build roadmap — the mix, extended over time */
   .roadbar{padding:2px 2px 14px}
@@ -594,6 +598,7 @@ const F_COST=[
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty bundled in the node purchase price — no separate support charge during this window, counted from each tranche&#39;s own delivery. Blackwell-generation systems ship with 5yr where the H100 generation shipped with 3yr; at a 5-year holding period that covers the kit for its whole life, and matters again at resale because cover still running is worth a premium in the secondary market. If the vendor charges for the extension, add it to the node price rather than here.'},
   {k:'otherPct',gpuOnly:true,label:'GPU &amp; Fabric O&amp;M',unit:'% capex/yr',step:0.5,pct:true,info:'Keeping the fleet and its fabric running: hardware break-fix labour and the RMA process, spares logistics, optics and cable replacement, cluster monitoring, firmware and node lifecycle, smart hands. Not the building — on-site engineers, NOC, M&amp;E and security belong to the landlord and are already bought with the hall rent above, so charging them here would pay for them twice. As % of live server and network capex per year, escalating at the O&amp;M inflation rate. Deliberately generous: 3.5% is $4,357 a card a year against a bottom-up build of $500-1,000, and warranty covers every part for the whole five-year life, so the difference is a conservative margin rather than a costing.'},
+  {custom:'omSum',propcoOnly:true,label:''},
   {k:'omPerMWYr',propcoOnly:true,label:'Facility O&amp;M',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'What it costs to run the hall each year, per MW: M&amp;E maintenance contracts $175k against a $100-250k industry band, on-site engineers and NOC $100k at roughly 0.7 people per MW, 24/7 security $50k, insurance $42k at 0.3% of build, consumables, water treatment and spares $30k, ground rent $9k. Excludes electricity, which the tenant meters, and excludes equipment replacement, which is capital and sits on its own line.'},
   {k:'refreshPerMWYr',propcoOnly:true,label:'Equipment refresh',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Mid-life replacement, spread over the 25-year facility life. UPS batteries $144k — VRLA lasts 4 years so it is bought six times, and lithium at 8-15 years would roughly halve this; CRAH units $84k on a 12-year life; cooling towers $34k at 10 years; chiller compressor overhauls $30k; UPS electronics $24k; pumps, seals and valves $18k; BMS and DCIM refresh $18k; fire suppression $6k. Generators, switchgear, distribution boards and chilled-water piping run 25-30 years and are not in here — they outlive the contract.'},
   {k:'ovhPerMWYr',propcoOnly:true,label:'Corporate overhead',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Head office for a landlord business: management, finance, legal, commercial. Charged per MW rather than as a share of revenue because that is what it scales with here. $250k/MW is about $30M a year across 120 MW.'},
@@ -1386,7 +1391,7 @@ function buildGroup(id,fields){
   fields=fields.filter((f,i,arr)=>!f.section||(arr[i+1]&&!arr[i+1].section));
   b.innerHTML=fields.map(f=>{
     if(f.section)return `<div class="gsec">${f.section}</div>`;
-    if(f.custom)return `<div class="subhead">${f.label}</div><div id="${f.custom}"></div>`;
+    if(f.custom)return `${f.label?`<div class="subhead">${f.label}</div>`:''}<div id="${f.custom}"></div>`;
     if(f.options){
       return `<div class="arow" id="wrap_${f.k}">${lbl(f)}
         <span class="val"><select id="a_${f.k}">${f.options.map(v=>`<option value="${v}"${v===S[f.k]?' selected':''}>${v} · ${(v*S.gpus).toLocaleString()} GPU</option>`).join('')}</select><span class="unit">${f.unit}</span></span></div>`;
@@ -1442,7 +1447,23 @@ function resetAll(){
   PRIM.forEach(bindPrimary);bindGpuCount();bindColo();bindWsShare();bindToggles();
   setProduct(PROD);
 }
-function preset(name){if(name==='saudi'){S.elec=0.047;}PRIM.forEach(bindPrimary);bindGpuCount();bindColo();buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);render();}
+let OM_OPEN=false;
+function toggleOm(){ OM_OPEN=!OM_OPEN; renderOmSum(); }
+/* The three lines below add up to one number a reader recognises, so lead with the total
+   and let them open it. Collapsed by default: the breakdown is the answer to a question,
+   not the first thing anyone needs. */
+function renderOmSum(){
+  const host=document.getElementById('omSum');
+  const keys=['omPerMWYr','refreshPerMWYr','ovhPerMWYr'];
+  keys.forEach(k=>{const w=document.getElementById('wrap_'+k); if(w)w.style.display=OM_OPEN?'':'none';});
+  if(!host)return;
+  const tot=keys.reduce((t,k)=>t+(S[k]||0),0);
+  host.innerHTML=`<div class="arow omsum" onclick="toggleOm()" title="${OM_OPEN?'Hide':'Show'} the breakdown">
+    <span class="flabel"><span class="omcar">${OM_OPEN?'&#9662;':'&#9656;'}</span>IDC O&amp;M
+      <span class="hint">all-in, per MW IT</span></span>
+    <span class="val"><b class="num">${(tot/1e6).toFixed(3)}</b><span class="unit">$M / MW IT / yr</span></span></div>`;
+}
+function preset(name){if(name==='saudi'){S.elec=0.047;}PRIM.forEach(bindPrimary);bindGpuCount();bindColo();buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);renderOmSum();render();}
 
 /* ═══════════════ product & model selectors ═══════════════ */
 function renderProdBar(){
@@ -1836,6 +1857,7 @@ function syncInputs(){
   const oc=document.getElementById('occupancy'),ocr=document.getElementById('occupancy_r');
   if(oc){oc.value=Math.round(S.occupancy*100);} if(ocr){ocr.value=Math.round(S.occupancy*100);}
   buildGroup('body_rev',F_REV);buildGroup('body_cost',F_COST);buildGroup('body_fin',F_FIN);
+  renderOmSum(); // buildGroup rewrote the rows, so restate which of them are open
 }
 
 (()=>{const m=GPU_MODELS.find(x=>x.id===GPU); if(m)S.rental=blendRental(m,S.wsShare);})(); // seed blended rental
