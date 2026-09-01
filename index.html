@@ -345,7 +345,7 @@
     <div class="panel">
       <div class="ph">Core inputs</div>
       <div class="drv">
-        <div class="row"><label>GPU capex<span class="hint">per 8-GPU server, bare-metal</span><span class="ttip" data-tip="Bare-metal server price per 8-GPU node (hardware only; networking added separately). HGX B300 OEM systems run ~$430-550k incl. liquid cooling; DGX B300 lists $300-350k. Confirm whether your quote includes networking.">ⓘ</span></label>
+        <div class="row"><label>GPU capex<span class="hint">per 8-GPU server, bare-metal</span><span class="ttip" data-tip="Bare-metal price per box, hardware only. Networking is the next field.">ⓘ</span></label>
           <div class="val"><input type="number" id="serverPrice" step="10000"><span class="unit">$ / server</span></div></div>
         <input type="range" id="serverPrice_r" min="100000" max="1200000" step="10000">
       </div>
@@ -355,17 +355,17 @@
         <input type="range" id="gpuCount_r" min="1024" max="40960" step="1024">
       </div>
       <div class="drv">
-        <div class="row"><label>Network capex<span class="hint">IB/RoCE fabric · switches, optics, cabling</span><span class="ttip" data-tip="Back-end scale-out fabric — switches, optics, cabling — as % of server capex, and it depends entirely on what the box already contains. B300 nodes buy the lot: ConnectX-8 SuperNICs at roughly $2-3k a card plus the whole switch and optics estate, which is where 12% comes from. A GB300 NVL72 rack already holds its NVLink switch trays and its SuperNICs, so only rack-to-rack interconnect is left; 5% carries a three-layer fat tree with headroom against the roughly $3.9k a card the optics maths implies, optics being 75-80% of what a fabric costs. Set to 0 if the server quote already includes networking.">ⓘ</span></label>
+        <div class="row"><label>Network capex<span class="hint">IB/RoCE fabric · switches, optics, cabling</span><span class="ttip" data-tip="Scale-out fabric between boxes: switches, optics, cabling. GB300 racks already contain their NVLink and NICs.">ⓘ</span></label>
           <div class="val"><input type="number" id="netPct" step="1"><span class="unit">% of server capex</span></div></div>
         <input type="range" id="netPct_r" min="0" max="25" step="1">
       </div>
       <div class="drv">
-        <div class="row"><label>GPU Power<span class="hint">HGX B300 node</span><span class="ttip" data-tip="IT power draw per 8-GPU node (GPUs + CPU/mem + in-node NICs). B300 8-GPU ≈ 11.2kW GPUs + 2-3kW CPU/mem/NIC = ~14kW. The external network fabric is the separate 'Network Power' field below. Together they drive electricity and facility MW sizing.">ⓘ</span></label>
+        <div class="row"><label>GPU Power<span class="hint">HGX B300 node</span><span class="ttip" data-tip="Power drawn per box — GPUs, CPU, memory, in-box NICs. The external fabric is the next field.">ⓘ</span></label>
           <div class="val"><input type="number" id="powerKW" step="0.5"><span class="unit">kW</span></div></div>
         <input type="range" id="powerKW_r" min="8" max="25" step="0.5">
       </div>
       <div class="drv">
-        <div class="row"><label>Network Power<span class="hint">IB/Spectrum fabric · switches + optics</span><span class="ttip" data-tip="External network fabric power per node — leaf/spine InfiniBand/Spectrum switches + optics, outside the 8-GPU node. ≈10% of GPU power for rail-optimized 800G clusters. Added on top of GPU Power for electricity and facility MW sizing.">ⓘ</span></label>
+        <div class="row"><label>Network Power<span class="hint">IB/Spectrum fabric · switches + optics</span><span class="ttip" data-tip="Power drawn by the leaf/spine fabric, per box.">ⓘ</span></label>
           <div class="val"><input type="number" id="netPowerKW" step="0.1"><span class="unit">kW</span></div></div>
         <input type="range" id="netPowerKW_r" min="0" max="5" step="0.1">
       </div>
@@ -375,27 +375,27 @@
         <input type="range" id="elec_r" min="0.02" max="0.20" step="0.001">
       </div>
       <div class="drv" id="rentalRow">
-        <div class="row"><label>GPU rental price<span class="hint" id="rentNote">by sales channel</span><span class="ttip" data-tip="What the fleet sells for, priced per channel. Wholesale is the committed/contract floor — bankable revenue that services debt. On-demand is retail, benchmarked to the lowest of AWS/Azure/OCI: a premium price on volatile volume. The two blend by the wholesale sales share below.">ⓘ</span></div>
+        <div class="row"><label>GPU rental price<span class="hint" id="rentNote">by sales channel</span><span class="ttip" data-tip="Sell price per channel. Wholesale is committed long contracts; on-demand is spot, priced higher.">ⓘ</span></div>
         <div id="gpuRates"></div>
-        <div class="row" style="margin-top:9px"><label>Wholesale sales share<span class="hint" id="wsNote">65% contract · 35% on-demand</span><span class="ttip" data-tip="Share of fleet capacity sold on wholesale/committed contracts vs on-demand retail. Contract revenue is bankable (services debt); on-demand earns a premium but is volatile. rental = share×wholesale + (1−share)×on-demand.">ⓘ</span></label>
+        <div class="row" style="margin-top:9px"><label>Wholesale sales share<span class="hint" id="wsNote">65% contract · 35% on-demand</span><span class="ttip" data-tip="Split between committed contracts and on-demand. Wholesale is safer; on-demand carries the margin.">ⓘ</span></label>
           <div class="val"><input type="number" id="wsShare" step="5"><span class="unit">% wholesale</span></div></div>
         <input type="range" id="wsShare_r" min="0" max="100" step="5">
       </div>
       <div class="drv" id="custRow">
-        <div class="row rowstack"><label>Customer type<span class="hint" id="vatNote">domestic · +15% VAT</span><span class="ttip" data-tip="VAT treatment of the quote. Domestic KSA sale → 15% VAT on the invoice. Qualifying export of services to a non-resident (e.g. a Dubai/UAE company consuming compute abroad) → 0% zero-rated. VAT is a pass-through: it does NOT change revenue, EBITDA or IRR — it only sets the customer-facing invoice price. Export zero-rating is subject to ZATCA confirmation and applies to a genuine service, not a lease of specific KSA-located hardware.">ⓘ</span></label>
+        <div class="row rowstack"><label>Customer type<span class="hint" id="vatNote">domestic · +15% VAT</span><span class="ttip" data-tip="Domestic KSA sales carry 15% VAT; exports are zero-rated. Affects the invoice, not the economics.">ⓘ</span></label>
           <div class="modeseg"><button id="cust_domestic" class="modebtn" onclick="setCustomer('domestic')">Domestic · 15% VAT</button><button id="cust_export" class="modebtn" onclick="setCustomer('export')">Export · 0% VAT</button></div>
         </div>
       </div>
       <div class="drv" id="taasRow" style="display:none">
-        <div class="row rowstack"><label>Token mix by modality<span class="hint">share · $/1M · GPU throughput</span><span class="ttip" data-tip="Revenue split by modality, each billed the industry way: Text & Audio per 1M tokens with input/output split (Text anchored to GLM-5.2: $1.40 in / $4.40 out); Image per image (Seedream 4.5 ~$0.04); Video per second (Seedance 2.0 ~$0.14). Rate = billable output per GPU (tok/s, images/hr, video-sec/hr). All modalities share one IDC + GPU fleet; the engine runs on a fleet-weighted blended $/GPU-hr.">ⓘ</span></label></div>
+        <div class="row rowstack"><label>Token mix by modality<span class="hint">share · $/1M · GPU throughput</span><span class="ttip" data-tip="Revenue by modality, each billed its industry way. Video earns a bigger share of revenue than of capacity.">ⓘ</span></label></div>
         <div id="modeTable"></div>
       </div>
       <div class="drv" id="leaseRow" style="display:none">
-        <div class="row"><label>Lease rate — to tenants<span class="hint">$ / kW committed / month, by capacity type</span><span class="ttip" data-tip="Monthly lease rate charged to tenants per kW of committed IT capacity, excl. metered power (tenants pay their own electricity). Priced per capacity type — denser AI capacity carries a premium — and blended by the capacity mix above. Escalates yearly by the colo escalation rate.">ⓘ</span></label></div>
+        <div class="row"><label>Lease rate — to tenants<span class="hint">$ / kW committed / month, by capacity type</span><span class="ttip" data-tip="Monthly rent per kW of committed IT capacity, excluding metered power.">ⓘ</span></label></div>
         <div id="leaseRates"></div>
       </div>
       <div class="drv" id="occRow" style="display:none">
-        <div class="row"><label>Occupancy / lease-up<span class="hint">% of capacity leased</span><span class="ttip" data-tip="Share of sellable capacity actually leased to tenants. Vacant capacity still carries facility depreciation, O&amp;M and G&amp;A, so lower occupancy thins the margin. Stabilised data centres run 85-95%.">ⓘ</span></label>
+        <div class="row"><label>Occupancy / lease-up<span class="hint">% of capacity leased</span><span class="ttip" data-tip="Share of capacity actually let. Empty space still carries depreciation and O&amp;M.">ⓘ</span></label>
           <div class="val"><input type="number" id="occupancy" step="5"><span class="unit">%</span></div></div>
         <input type="range" id="occupancy_r" min="40" max="100" step="5">
       </div>
@@ -405,7 +405,7 @@
         </div>
       </div>
       <div class="drv" id="drv_lease">
-        <div class="row"><label>Colocation rent<span class="hint">rack + power capacity, excl. metered power</span><span class="ttip" data-tip="Colocation rent you pay a third-party DC per kW of IT capacity (lease mode), excl. metered power. Market $150-215/kW/mo. No facility capex, no depreciation — pure opex.">ⓘ</span></label>
+        <div class="row"><label>Colocation rent<span class="hint">rack + power capacity, excl. metered power</span><span class="ttip" data-tip="Rent paid per kW of IT capacity, excluding metered power.">ⓘ</span></label>
           <div class="val"><input type="number" id="coloPerKWMo" step="10"><span class="unit">$ / kW / mo</span></div></div>
         <input type="range" id="coloPerKWMo_r" min="80" max="400" step="10">
       </div>
@@ -578,50 +578,50 @@ const DC_GRADE_LIST=[
 ];
 
 const F_REV=[
-  {k:'gpus',gpuOnly:true,label:'GPUs per server',unit:'#',step:1,info:'GPUs per node. HGX/DGX B300 is 8. Sets GPU-count rounding and per-node power.'},
-  {k:'deployMonths',gpuOnly:true,roadmapDead:true,label:'Deployment period',unit:'months',step:1,tog:'phase',info:'Months to install all GPUs (staged capex). Capacity comes online gradually, not day one.'},
-  {k:'leadMonths',gpuOnly:true,roadmapDead:true,label:'Build lead time',unit:'months (capex→rev)',step:1,tog:'phase',info:'Commissioning gap between spending capex and earning revenue — money out, debt clock running, no income. The deepest part of the Year-1 cash hole.'},
-  {k:'lockYears',gpuOnly:true,label:'Contract lock period',unit:'years',step:1,tog:'lock',info:'Years the rental price is contractually fixed. The single most important bankability lever — locked revenue is what makes the debt serviceable.'},
-  {k:'rentalDecline',gpuOnly:true,label:'Market erosion / yr',unit:'%',step:1,pct:true,tog:'decline',info:'Annual decline in market GPU-hour price as newer silicon ships. Applies after the lock period expires. H100 fell ~40%/yr post-peak.'},
+  {k:'gpus',gpuOnly:true,label:'GPUs per server',unit:'#',step:1,info:'GPUs per box.'},
+  {k:'deployMonths',gpuOnly:true,roadmapDead:true,label:'Deployment period',unit:'months',step:1,tog:'phase',info:'Months to install. Ignored while a roadmap sets the dates.'},
+  {k:'leadMonths',gpuOnly:true,roadmapDead:true,label:'Build lead time',unit:'months (capex→rev)',step:1,tog:'phase',info:'Gap between paying for kit and earning from it. Ignored while a roadmap sets the dates.'},
+  {k:'lockYears',gpuOnly:true,label:'Contract lock period',unit:'years',step:1,tog:'lock',info:'Years the rental price is contractually fixed.'},
+  {k:'rentalDecline',gpuOnly:true,label:'Market erosion / yr',unit:'%',step:1,pct:true,tog:'decline',info:'How fast the spot price falls once the lock expires.'},
   {k:'utilStart',gpuOnly:true,label:'Utilization — start',unit:'%',step:1,pct:true,tog:'util',info:'Billed hours ÷ available hours in month 1. New clusters ramp from partial fill; 45% reflects early lease-up.'},
-  {k:'utilSteady',gpuOnly:true,label:'Utilization — steady',unit:'%',step:1,pct:true,info:'Mature utilisation once ramped. 85% is strong for contracted capacity; hyperscalers assume 70-90%.'},
+  {k:'utilSteady',gpuOnly:true,label:'Utilization — steady',unit:'%',step:1,pct:true,info:'Share of fleet-hours actually sold.'},
   {k:'utilRamp',gpuOnly:true,label:'Utilization ramp',unit:'months',step:1,tog:'util',info:'Months to climb from start to steady utilisation as customers onboard.'},
-  {k:'arDays',label:'Receivable days (AR)',unit:'days',step:5,tog:'wc',info:'Days between billing and cash collection. Working-capital drag funded by equity until it unwinds.'},
-  {k:'usableIT',propcoOnly:true,label:'Usable IT load',unit:'% of campus power',step:5,pct:true,info:'Share of campus power that reaches the white space as leasable IT load; the rest is cooling, electrical losses and back-of-house. The roadmap is scheduled in MW IT, so this works the other way round: it derives how much campus power the site has to draw to deliver that load. Every rate in the model — build cost, O&M, development fees, lease price — is per MW IT.'},
+  {k:'arDays',label:'Receivable days (AR)',unit:'days',step:5,tog:'wc',info:'Days of revenue sitting in receivables. Cash tied up, released at exit.'},
+  {k:'usableIT',propcoOnly:true,label:'Usable IT load',unit:'% of campus power',step:5,pct:true,info:'Leasable IT load &divide; campus power. Sets the gross MW headline, not the cost.'},
   {k:'coloMW',roadmapDriven:true,label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
   {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Set by the capacity mix: $250/kW/mo for general-purpose colo, rising with power density.'},
-  {k:'coloEsc',label:'Colo rate escalation',unit:'% / yr',step:0.5,pct:true,tog:'colo',info:'Annual rent rise written into the lease. Saudi commercial leases run 3-5%; global hyperscale sits at 2-3% because those are triple-net and the tenant carries the cost inflation. This one is not, so the escalator has to keep pace with the O&amp;M it funds. Under the 2026 rules a Saudi landlord cannot raise rent at all without this clause in the contract.'},
+  {k:'coloEsc',label:'Colo rate escalation',unit:'% / yr',step:0.5,pct:true,tog:'colo',info:'Annual rent rise written into the lease. Saudi commercial leases run 3-5%; a landlord who carries its own cost inflation needs the upper end.'},
 ];
 const F_COST=[
   {section:'CAPEX &amp; residual value'},
-  {k:'psPerGpu',gpuOnly:true,label:'Deployment / professional fees',unit:'$ / GPU',step:100,info:'One-time professional services to stand up the GPU fleet — cluster design, integration, fabric bring-up, commissioning. Quoted per card: $4,687.50 is the $2.4M-per-512-GPU pod rate divided down, so it scales with any fleet size. Capitalised when the kit lands and depreciated over the life of the servers it commissions.'},
-  {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time pre-construction professional services on an own-build IDC — securing land, business case, IDC design and development management. Benchmarked at $10.6M for 25 MW ($424k per MW IT) and pro-rated to facility size. Incurred at kick-off, capitalised with the facility and depreciated over its useful life. Excluded from the O&M base — fees create no plant to maintain.'},
-  {k:'facilityPerMW',gpuOnly:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in facility construction cost per MW IT (own-build) — structure, power train, cooling, white space. Excludes servers, network and depreciation.'},
+  {k:'psPerGpu',gpuOnly:true,label:'Deployment / professional fees',unit:'$ / GPU',step:100,info:'One-time commissioning per card. Charged as each tranche lands, then depreciated.'},
+  {k:'psPerMW',label:'Development / professional fees',unit:'$k/MW IT',step:10,scale:1e3,tog:'facility',info:'One-time fees before construction — land, business case, design, development management. $424k/MW, benchmarked at $10.6M for 25 MW. Charged as each tranche is handed over.'},
+  {k:'facilityPerMW',gpuOnly:true,label:'IDC / facility build',unit:'$M / MW IT',step:0.5,scale:1e6,tog:'facility',info:'All-in build cost per MW — structure, power train, cooling, white space.'},
   {custom:'buildRates',propcoOnly:true,label:'IDC / facility build'},
-  {k:'shellPct',propcoOnly:true,label:'Built once, before any MW earns',unit:'% of the build cost',step:5,pct:true,tog:'facility',info:'The shell — ground works, structure, envelope, the main power route in and the chilled-water mains — has to be built for the whole site before a single MW can be handed over. You cannot pour a foundation for 4 MW and extend it later. Everything else — UPS, cooling units, PDUs, white space — goes in tranche by tranche as the roadmap delivers, so it is only paid for when it is needed. This splits the build cost between the two and changes nothing about the total: at 25% it is $420M up front against $1,260M spread across the build, which is why 2026 spends $464M to deliver 4 MW.'},
-  {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Straight-line depreciation life of the building & M&E (own-build only). Traditional DC infrastructure runs 20-25yr.'},
-  {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'GPU server resale value at exit, as % of purchase price. Secondary-market data puts a 2-year-old H100 near 61% of original and a 3-year-old at 45-60%, with used A100s spanning 60-80%; CoreWeave has re-booked 2022 H100s at 95% of original contract pricing. A figure at the top of that range is a scarcity call, not a depreciation curve — it assumes the compute shortage outlasts the hold.'},
-  {k:'netResidualPct',gpuOnly:true,label:'Network resale value',unit:'% at exit',step:1,pct:true,info:'Resale value of switches, optics and cabling at exit, as % of purchase price. Zero here: the fabric is written off over the hold rather than assumed to resell, which is the conservative call next to the GPUs it serves.'},
+  {k:'shellPct',propcoOnly:true,label:'Built once, before any MW earns',unit:'% of the build cost',step:5,pct:true,tog:'facility',info:'The shell must be built for the whole site before any MW earns; everything else goes in tranche by tranche. Splits the timing, not the total.'},
+  {k:'facilityLife',label:'Facility useful life',unit:'yrs',step:1,tog:'facility',info:'Depreciation life of the building and M&amp;E. 20-25 years is standard.'},
+  {k:'residualPct',gpuOnly:true,label:'GPU / server resale value',unit:'% at exit',step:1,pct:true,info:'Resale price as % of what the card cost.'},
+  {k:'netResidualPct',gpuOnly:true,label:'Network resale value',unit:'% at exit',step:1,pct:true,info:'Resale value of switches and optics. Zero here — written off rather than assumed to sell.'},
   {section:'OPEX — recurring'},
-  {k:'pue',gpuOnly:true,label:'PUE',unit:'x',step:0.05,info:'Power Usage Effectiveness — total facility power ÷ IT power. Air-cooled ~1.4-1.5; liquid-cooled ~1.2-1.3. Multiplies the electricity bill.'},
+  {k:'pue',gpuOnly:true,label:'PUE',unit:'x',step:0.05,info:'Facility power &divide; IT power. Liquid-cooled halls run ~1.2.'},
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
-  {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty bundled in the node purchase price — no separate support charge during this window, counted from each tranche&#39;s own delivery. Blackwell-generation systems ship with 5yr where the H100 generation shipped with 3yr; at a 5-year holding period that covers the kit for its whole life, and matters again at resale because cover still running is worth a premium in the secondary market. If the vendor charges for the extension, add it to the node price rather than here.'},
-  {k:'otherPct',gpuOnly:true,label:'GPU &amp; Fabric O&amp;M',unit:'% capex/yr',step:0.5,pct:true,info:'Keeping the fleet and its fabric running: hardware break-fix labour and the RMA process, spares logistics, optics and cable replacement, cluster monitoring, firmware and node lifecycle, smart hands. Not the building — on-site engineers, NOC, M&amp;E and security belong to the landlord and are already bought with the hall rent above, so charging them here would pay for them twice. As % of live server and network capex per year, escalating at the O&amp;M inflation rate. Deliberately generous: 3.5% is $4,357 a card a year against a bottom-up build of $500-1,000, and warranty covers every part for the whole five-year life, so the difference is a conservative margin rather than a costing.'},
+  {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of warranty inside the purchase price, counted from each tranche&#39;s delivery.'},
+  {k:'otherPct',gpuOnly:true,label:'GPU &amp; Fabric O&amp;M',unit:'% capex/yr',step:0.5,pct:true,info:'Fleet and fabric upkeep as % of capex per year.'},
   {custom:'omSum',propcoOnly:true,label:''},
-  {k:'omPerMWYr',propcoOnly:true,label:'Facility O&amp;M',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Recurring cost of running the hall, per MW. Open the breakdown for the line items. Excludes electricity, which the tenant meters, and excludes equipment replacement, which is capital and has its own line.'},
-  {k:'refreshPerMWYr',propcoOnly:true,label:'Equipment refresh',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Mid-life equipment replacement, spread over the 25-year facility life. Open the breakdown for what is replaced and how often. Capital, not maintenance — the difference matters to lenders and to tax.'},
-  {k:'ovhPerMWYr',propcoOnly:true,label:'Corporate overhead',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Head office for a landlord business: management, finance, legal, commercial, plus audit and systems. Charged per MW because that is what it scales with here — $300k/MW is about $36M a year across 120 MW.'},
-  {k:'gaPct',gpuOnly:true,label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.'},
-  {k:'gaInfl',label:'Salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in every cost made of people: fleet and fabric upkeep, the console team, and corporate overhead. It deliberately does not touch the NVIDIA licence or the hall rent — those are bought at a stated price, and NVIDIA reprices its own list rather than Saudi wages doing it for them. Saudi CPI ran 2.03% in 2025 and 1.8-1.9% through 2026; engineers and operators cost more than headline CPI in a market building out this fast, so 5% carries several points of wage premium. Worth watching against whatever the rental price does: a contracted fleet earns the same each year while its payroll compounds, and the gap eats the margin from the inside.'},
+  {k:'omPerMWYr',propcoOnly:true,label:'Facility O&amp;M',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Recurring cost of running the hall, per MW. Open the breakdown for the line items. Excludes electricity, which the tenant meters.'},
+  {k:'refreshPerMWYr',propcoOnly:true,label:'Equipment refresh',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Mid-life equipment replacement, spread over the 25-year life. Open the breakdown for what is replaced and how often.'},
+  {k:'ovhPerMWYr',propcoOnly:true,label:'Corporate overhead',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Head office: management, finance, legal, commercial. ~$36M a year across 120 MW.'},
+  {k:'gaPct',gpuOnly:true,label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Head office as a share of revenue.'},
+  {k:'gaInfl',label:'Salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual rise in every cost made of people. Saudi CPI ran ~2%; operators cost far more in a market building out this fast.'},
   {section:'Tax'},
-  {k:'saudiPct',label:'Saudi / GCC ownership',unit:'%',step:5,pct:true,info:'Share of equity held by Saudi/GCC owners. Effective tax = ownership × 2.5% (Zakat) + (1−ownership) × 20% (foreign CIT). Zakat is technically levied on the Zakat base (net worth), approximated here on profit. 100% Saudi ⇒ 2.5% effective; 0% ⇒ 20%.'},
+  {k:'saudiPct',label:'Saudi / GCC ownership',unit:'%',step:5,pct:true,info:'Saudi/GCC ownership share. 100% pays 2.5% Zakat; foreign ownership pays 20% CIT pro rata.'},
 ];
 const F_FIN=[
-  {k:'debtPct',label:'Term loan (% of capex)',unit:'%',step:5,pct:true,tog:'debt',info:'Senior term loan sized as a share of total capex; repaid in equal monthly principal instalments over the tenor. The remainder is equity. 60% is typical project gearing.'},
-  {k:'debtRate',label:'Debt interest rate',unit:'%',step:0.5,pct:true,tog:'debt',info:'All-in annual interest on the loan. Commercial project debt in KSA runs SAIBOR+2-3% ≈ 7-9%.'},
-  {k:'dscrCov',label:'DSCR covenant',unit:'x minimum',step:0.05,tog:'debt',info:'Minimum debt service coverage the facility must maintain. Data centre paper is quoted at 1.35-1.45x, and CMBS at 1.30-1.45x; term sheets usually set two levels, a lock-up that suspends distributions to equity and a lower one that is an event of default. This is the lock-up level, and the verdict tests against it.'},
-  {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to fully repay principal, counted from first capacity handover. Short tenor crushes early DSCR; matching tenor to asset life is the fix. The binding constraint here is the contract term, not the asset: amortisation starts when the last tranche lands in month 48, so a 10-year term leaves 72 months to repay in. Anything longer strands a balance at exit.'},
-  {k:'feePct',label:'Debt arrangement fee',unit:'% of loan',step:0.25,pct:true,tog:'debt',info:'One-time debt arrangement / structuring fee, % of loan, expensed at close.'},
+  {k:'debtPct',label:'Term loan (% of capex)',unit:'%',step:5,pct:true,tog:'debt',info:'Share of capex funded by the term loan. The rest is equity.'},
+  {k:'debtRate',label:'Debt interest rate',unit:'%',step:0.5,pct:true,tog:'debt',info:'Interest on the term loan.'},
+  {k:'dscrCov',label:'DSCR covenant',unit:'x minimum',step:0.05,tog:'debt',info:'Minimum cover lenders require: cash flow &divide; debt service in the worst year. Moves the verdict, not the cash.'},
+  {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to repay principal, from the last tranche landing. Never run it past the contract term — 72 months is what a 10-year term leaves.'},
+  {k:'feePct',label:'Debt arrangement fee',unit:'% of loan',step:0.25,pct:true,tog:'debt',info:'Arranger fee on the loan, expensed at kick-off.'},
   {k:'disc',label:'Hurdle / discount rate',unit:'%',step:0.5,pct:true},
 ];
 
