@@ -825,7 +825,7 @@ function compute(p,tog){
     const eb=sum(ebitda),intr=sum(intPaid),prin=sum(dRepay),cashtax=sum(tax),dw=sum(dwc),fe=sum(feeA),rn=sum(rentx);
     const cfads=eb-cashtax-dw, ds=intr+prin;
     yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
-      depr:sum(depr),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
+      depr:sum(depr),deprP:sum(deprP),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
       capex:-sum(capexCf),draw:sum(dDraw),repay:prin,fcfe:sum(eqFcf),
       debtEnd:dBal[b],dscr:ds>1?cfads/ds:null,icr:intr>1?eb/intr:null,
       nde:eb!==0?dBal[b]/eb:null, price:price[b], util:util[b], online:online[b]});
@@ -1260,6 +1260,7 @@ function render(){
       ${o.useGA&&o.yrs.some(y=>y.ga>0)?plRow('Corporate G&A',o.yrs.map(y=>-y.ga)):''}
       ${plRow('EBITDA',o.yrs.map(y=>y.ebitda),true)}
       ${plRow('Depreciation',o.yrs.map(y=>-y.depr))}
+      ${o.psTotal>0&&o.yrs.some(y=>y.deprP>0)?plRow('  — of which deployment fees',o.yrs.map(y=>-y.deprP)):''}
       ${plRow('EBIT',o.yrs.map(y=>y.ebit))}
       ${T.debt?plRow('Interest',o.yrs.map(y=>-y.interest)):''}
       ${(T.debt&&S.feePct>0)?plRow('Arrangement fee',o.yrs.map(y=>-y.fee)):''}
