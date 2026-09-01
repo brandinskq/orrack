@@ -1532,6 +1532,10 @@ function setProduct(id){
   ['colo','lock','decline','util','phase','exitcur','ga'].forEach(k=>{
     const el=document.getElementById('tog_'+k); if(el)el.style.display=prod.gpu?'':'none';
   });
+  // The hall is held to the end of its contract and exits at book value, so there is no
+  // going-concern sale to price. Hidden rather than left switchable: an exit multiple is
+  // the easiest number in a plan to argue with, and this one was never part of the case.
+  {const el=document.getElementById('tog_exit'); if(el)el.style.display='none';}
   syncToggles(); renderGpuRates();
   setSpvFromProduct(prod);
   if(!prod.gpu)syncRoadmap();
