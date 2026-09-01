@@ -452,7 +452,7 @@ const DEF={
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.04, // lease term equals the contract term, so nothing re-lets inside the model
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:5, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.80, rackKW:0,
-  gaPct:0.12, gaInfl:0.03, omPerMWYr:610000, refreshPerMWYr:500000, ovhPerMWYr:300000, contPerMWYr:90000, renewUplift:0,
+  gaPct:0.12, gaInfl:0.03, omPerMWYr:650000, refreshPerMWYr:550000, ovhPerMWYr:300000, renewUplift:0,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, shellPct:0.25, usableIT:0.80, // psPerGpu = $2.4M per 512-GPU pod, expressed per card
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
@@ -536,7 +536,7 @@ const PRODUCTS=[
    // makes the first operating year the binding one every time, and at 120 it lands
    // under the covenant while every later year clears it comfortably. Stretching the
    // tenor fixes the shape without asking equity for another dollar.
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, omPerMWYr:1500000, gaInfl:0.05, debtPct:0.30, debtTenor:72, omPerMWYr:610000, refreshPerMWYr:500000, ovhPerMWYr:300000, contPerMWYr:90000}},
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, omPerMWYr:1500000, gaInfl:0.05, debtPct:0.30, debtTenor:72, omPerMWYr:650000, refreshPerMWYr:550000, ovhPerMWYr:300000}},
 ];
 let PROD='datahall';
 let CUST='domestic'; // VAT customer type: 'domestic' (15%) | 'export' (0%, zero-rated services)
@@ -611,7 +611,6 @@ const F_COST=[
   {k:'omPerMWYr',propcoOnly:true,label:'Facility O&amp;M',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Recurring cost of running the hall, per MW. Open the breakdown for the line items. Excludes electricity, which the tenant meters, and excludes equipment replacement, which is capital and has its own line.'},
   {k:'refreshPerMWYr',propcoOnly:true,label:'Equipment refresh',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Mid-life equipment replacement, spread over the 25-year facility life. Open the breakdown for what is replaced and how often. Capital, not maintenance — the difference matters to lenders and to tax.'},
   {k:'ovhPerMWYr',propcoOnly:true,label:'Corporate overhead',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Head office for a landlord business: management, finance, legal, commercial, plus audit and systems. Charged per MW because that is what it scales with here — $300k/MW is about $36M a year across 120 MW.'},
-  {k:'contPerMWYr',propcoOnly:true,label:'Contingency',unit:'$k / MW IT / yr',step:10,scale:1e3,info:'Unallocated reserve, 6% of the all-in rate. Named rather than buried: every other line here is built from a benchmark or a lifecycle, and this is the part that is not.'},
   {k:'gaPct',gpuOnly:true,label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.'},
   {k:'gaInfl',label:'Salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in every cost made of people: fleet and fabric upkeep, the console team, and corporate overhead. It deliberately does not touch the NVIDIA licence or the hall rent — those are bought at a stated price, and NVIDIA reprices its own list rather than Saudi wages doing it for them. Saudi CPI ran 2.03% in 2025 and 1.8-1.9% through 2026; engineers and operators cost more than headline CPI in a market building out this fast, so 5% carries several points of wage premium. Worth watching against whatever the rental price does: a contracted fleet earns the same each year while its payroll compounds, and the gap eats the margin from the inside.'},
   {section:'Tax'},
@@ -691,7 +690,7 @@ function compute(p,tog){
 
   const A=()=>new Array(N+1).fill(0);
   const build=A(),online=A(),capexS=A(),capexN=A(),capexF=A(),capex=A(),cumS=A(),cumN=A(),cumF=A(),util=A(),price=A(),bill=A(),rev=A(),revG=A(),revGm=A(),revC=A(),
-        elec=A(),warr=A(),oth=A(),refr=A(),ovh=A(),cont=A(),othF=A(),intR=A(),ga=A(),rentx=A(),trans=A(),ar=A(),dwc=A(),feeA=A(),cashopex=A(),deprS=A(),deprN=A(),deprF=A(),depr=A(),ebitda=A(),ebit=A(),
+        elec=A(),warr=A(),oth=A(),refr=A(),ovh=A(),othF=A(),intR=A(),ga=A(),rentx=A(),trans=A(),ar=A(),dwc=A(),feeA=A(),cashopex=A(),deprS=A(),deprN=A(),deprF=A(),depr=A(),ebitda=A(),ebit=A(),
         intCap=A(),intPaid=A(),capexP=A(),deprP=A(),dDraw=A(),dRepay=A(),dInt=A(),dBal=A(),pbt=A(),tax=A(),ni=A(),cfo=A(),capexCf=A(),projFcf=A(),eqFcf=A(),cumEq=A();
   const totalCapex=(useGpu?target*p.serverPrice*(1+p.netPct):0)+facTotal+psTotal;
   const netCapex=useGpu?target*p.serverPrice*p.netPct:0;
@@ -755,13 +754,12 @@ function compute(p,tog){
                  :build[m]*(p.omPerMWYr||0)/12*omInfl;
     refr[m]=useGpu?0:build[m]*(p.refreshPerMWYr||0)/12*omInfl;
     ovh[m] =useGpu?0:build[m]*(p.ovhPerMWYr||0)/12*omInfl;
-    cont[m]=useGpu?0:build[m]*(p.contPerMWYr||0)/12*omInfl;
     othF[m]=useGpu?cumF[m]*p.otherPct/12*omInfl:oth[m];
     intR[m]=useFac?gpuMW*1000*p.coloRate*(online[m]/target)*Math.pow(1+p.coloEsc,Math.floor((m-1)/12)):0;
     ga[m]=useGA?rev[m]*p.gaPct:0; // company opex + platform, scales with revenue
     rentx[m]=useFac?(mwIT*p.siteRentPerMW/12):(online[m]*pkEff*p.coloPerKWMo);
     trans[m]=online[m]>0?p.transitMo:0;
-    cashopex[m]=elec[m]+warr[m]+oth[m]+refr[m]+ovh[m]+cont[m]+ga[m]+rentx[m]+trans[m];
+    cashopex[m]=elec[m]+warr[m]+oth[m]+refr[m]+ovh[m]+ga[m]+rentx[m]+trans[m];
     ar[m]=useWC?rev[m]*p.arDays/30.4:0;
     dwc[m]=ar[m]-ar[m-1];
     deprS[m]=Math.min(cumS[m]*(1-p.residualPct)/(p.years*12), Math.max(0,cumS[m]*(1-p.residualPct)-accDeprS)); accDeprS+=deprS[m];
@@ -851,7 +849,7 @@ function compute(p,tog){
     const a=(y-1)*12+1,b=y*12; const sum=arr=>{let s=0;for(let m=a;m<=b;m++)s+=arr[m];return s;};
     const eb=sum(ebitda),intr=sum(intPaid),prin=sum(dRepay),cashtax=sum(tax),dw=sum(dwc),fe=sum(feeA),rn=sum(rentx);
     const cfads=eb-cashtax-dw, ds=intr+prin;
-    yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),refr:sum(refr),ovh:sum(ovh),cont:sum(cont),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
+    yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),refr:sum(refr),ovh:sum(ovh),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
       depr:sum(depr),deprP:sum(deprP),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
       capex:-sum(capexCf),capexP:sum(capexP),draw:sum(dDraw),repay:prin,fcfe:sum(eqFcf),
       debtEnd:dBal[b],dscr:ds>1?cfads/ds:null,icr:intr>1?eb/intr:null,
@@ -893,7 +891,7 @@ function compute(p,tog){
         dev:(psTotal/(p.facilityLife*12))/kW,
         rent:(coloMW*p.siteRentPerMW/12)/kW,
         elec:0,
-        oth:(coloMW*((p.omPerMWYr||0)+(p.refreshPerMWYr||0)+(p.ovhPerMWYr||0)+(p.contPerMWYr||0))/12)/kW,
+        oth:(coloMW*((p.omPerMWYr||0)+(p.refreshPerMWYr||0)+(p.ovhPerMWYr||0))/12)/kW,
         ga:useGA?p.gaPct*p.coloRate:0};
     costBasis=cb.depr+cb.dev+cb.rent+cb.oth+cb.ga;
     unitPrice=p.coloRate; unitStr='/kW\u00b7mo'; rentMo=p.coloRate;
@@ -1285,7 +1283,6 @@ function render(){
       ${plRow(o.useGpu?'GPU & Fabric O&M':'Facility O&M',o.yrs.map(y=>-y.oth))}
       ${o.yrs.some(y=>y.refr>0)?plRow('Equipment refresh',o.yrs.map(y=>-y.refr)):''}
       ${o.yrs.some(y=>y.ovh>0)?plRow('Corporate overhead',o.yrs.map(y=>-y.ovh)):''}
-      ${o.yrs.some(y=>y.cont>0)?plRow('Contingency',o.yrs.map(y=>-y.cont)):''}
       ${o.yrs.some(y=>y.rent>0)?plRow(o.useFac?'Site ground rent':'Colocation fees',o.yrs.map(y=>-y.rent)):''}
       ${o.useGA&&o.yrs.some(y=>y.ga>0)?plRow('Corporate G&A',o.yrs.map(y=>-y.ga)):''}
       ${plRow('EBITDA',o.yrs.map(y=>y.ebitda),true)}
@@ -1470,28 +1467,28 @@ const OM_DETAIL={
     ['Security, 24/7','','$75k','~0.5 FTE per MW'],
     ['Insurance','','$56k','0.4% of build cost'],
     ['Consumables, water treatment, spares','','$50k',''],
+    ['Critical spares inventory','','$20k','held on site, carrying cost'],
     ['Site utilities excl. IT power','','$20k','lighting, offices, welfare'],
+    ['Training &amp; certification','','$10k','24/7 shift teams, recurring'],
+    ['Environmental &amp; compliance testing','','$10k','emissions, water, noise'],
     ['Ground rent','','$9k','MODON, major city'],
   ]},
   refreshPerMWYr:{title:'Equipment refresh — capital, spread over 25 years', rows:[
-    ['UPS batteries (VRLA)','4 yr · 6&times;','$180k','lithium at 8-15 yr halves this'],
-    ['CRAH / CRAC units','12 yr · 2&times;','$96k',''],
-    ['Liquid cooling: CDU, coolant, hoses','6 yr · 4&times;','$50k','250kW racks, 20% of capacity'],
-    ['Chiller compressor overhaul','8 yr · 3&times;','$42k',''],
-    ['Cooling towers','10 yr · 2&times;','$40k',''],
-    ['UPS electronics, capacitors, fans','10 yr · 2&times;','$32k',''],
-    ['Pumps, seals, valves','8 yr · 3&times;','$24k',''],
-    ['BMS / DCIM refresh','8 yr · 3&times;','$24k',''],
-    ['Fire suppression, detectors','10 yr · 2&times;','$8k',''],
+    ['UPS batteries (VRLA)','4 yr &middot; 6&times;','$200k','lithium at 8-15 yr halves this'],
+    ['CRAH / CRAC units','12 yr &middot; 2&times;','$96k',''],
+    ['Liquid cooling: CDU, coolant, hoses','6 yr &middot; 4&times;','$80k','250kW racks, thin field data'],
+    ['Chiller compressor overhaul','8 yr &middot; 3&times;','$42k',''],
+    ['Cooling towers','10 yr &middot; 2&times;','$40k',''],
+    ['UPS electronics, capacitors, fans','10 yr &middot; 2&times;','$32k',''],
+    ['Pumps, seals, valves','8 yr &middot; 3&times;','$24k',''],
+    ['BMS / DCIM refresh','8 yr &middot; 3&times;','$24k',''],
+    ['Fire suppression, detectors','10 yr &middot; 2&times;','$8k',''],
     ['Electrical testing, thermography','','$4k',''],
   ], foot:'Generators, switchgear, distribution boards and chilled-water piping run 25-30 years and are not here — they outlive the contract.'},
   ovhPerMWYr:{title:'Corporate overhead', rows:[
     ['Management, finance, legal, commercial','','$250k','~$30M across 120 MW'],
     ['Audit, ERP, professional fees','','$50k',''],
   ]},
-  contPerMWYr:{title:'Contingency', rows:[
-    ['Unallocated reserve','','$90k','6% of the all-in rate'],
-  ]}
 };
 function omDetailHTML(k){
   const d=OM_DETAIL[k]; if(!d)return '';
@@ -1506,7 +1503,7 @@ function toggleOm(){ OM_OPEN=!OM_OPEN; renderOmSum(); }
    not the first thing anyone needs. */
 function renderOmSum(){
   const host=document.getElementById('omSum');
-  const keys=['omPerMWYr','refreshPerMWYr','ovhPerMWYr','contPerMWYr'];
+  const keys=['omPerMWYr','refreshPerMWYr','ovhPerMWYr'];
   keys.forEach(k=>{const w=document.getElementById('wrap_'+k); if(w)return void(w.style.display=OM_OPEN?'':'none');});
   // the detail hangs off each rate's own row, so it moves with the field it explains
   keys.forEach(k=>{const w=document.getElementById('wrap_'+k); if(!w)return;
