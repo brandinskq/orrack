@@ -436,10 +436,10 @@ const DEF={
   wsShare:0.70, // GPU sales mix: 70% wholesale/contract, 30% on-demand — blends the rental
 
   servers:128, gpus:8, deployMonths:3, leadMonths:2, lockYears:5,
-  coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.04,
+  coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.04, // lease term equals the contract term, so nothing re-lets inside the model
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:5, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.80, rackKW:0,
-  gaPct:0.12, gaInfl:0.03, omPerMWYr:1500000, renewUplift:0.10,
+  gaPct:0.12, gaInfl:0.03, omPerMWYr:1500000, renewUplift:0,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, shellPct:0.25, usableIT:0.80, // psPerGpu = $2.4M per 512-GPU pod, expressed per card
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
@@ -577,8 +577,6 @@ const F_REV=[
   {k:'usableIT',propcoOnly:true,label:'Usable IT load',unit:'% of campus power',step:5,pct:true,info:'Share of campus power that reaches the white space as leasable IT load; the rest is cooling, electrical losses and back-of-house. The roadmap is scheduled in MW IT, so this works the other way round: it derives how much campus power the site has to draw to deliver that load. Every rate in the model — build cost, O&M, development fees, lease price — is per MW IT.'},
   {k:'coloMW',roadmapDriven:true,label:'Colocation capacity',unit:'MW IT',step:0.5,tog:'colo',info:'Facility capacity leased to third-party colo tenants (own-build only). A stable rental layer beside the GPU business.'},
   {k:'coloRate',coreInPropco:true,label:'Colo rate (excl. power)',unit:'$/kW/mo',step:10,tog:'colo',info:'Rack + power-capacity rent to colo tenants, excl. metered power (tenants pay their own electricity). Set by the capacity mix: $250/kW/mo for general-purpose colo, rising with power density.'},
-  {k:'renewUplift',propcoOnly:true,label:'Renewal uplift',unit:'% at re-lease',step:1,pct:true,tog:'colo',info:'One-time step-up in the lease rate when the initial term expires and space is re-let at market. Digital Realty booked cash renewal spreads of +6.1% to +8.0% through 2025, and close to +20% in its hyperscale segment; annual escalation continues on top of this. Set 0 to renew flat.'},
-  {k:'coloLeaseYears',label:'Colo lease term',unit:'years',step:1,tog:'colo',info:'Colo tenant lease length. 10yr+ is standard and lets the remaining lease be valued as a resale asset at exit.'},
   {k:'coloEsc',label:'Colo rate escalation',unit:'% / yr',step:0.5,pct:true,tog:'colo',info:'Annual rent rise written into the lease. Saudi commercial leases run 3-5%; global hyperscale sits at 2-3% because those are triple-net and the tenant carries the cost inflation. This one is not, so the escalator has to keep pace with the O&amp;M it funds. Under the 2026 rules a Saudi landlord cannot raise rent at all without this clause in the contract.'},
 ];
 const F_COST=[
@@ -608,7 +606,6 @@ const F_FIN=[
   {k:'dscrCov',label:'DSCR covenant',unit:'x minimum',step:0.05,tog:'debt',info:'Minimum debt service coverage the facility must maintain. Data centre paper is quoted at 1.35-1.45x, and CMBS at 1.30-1.45x; term sheets usually set two levels, a lock-up that suspends distributions to equity and a lower one that is an event of default. This is the lock-up level, and the verdict tests against it.'},
   {k:'debtTenor',label:'Debt tenor',unit:'months',step:6,tog:'debt',info:'Months to fully repay principal, counted from first capacity handover. Short tenor crushes early DSCR; matching tenor to asset life is the fix. The binding constraint here is the contract term, not the asset: amortisation starts when the last tranche lands in month 48, so a 10-year term leaves 72 months to repay in. Anything longer strands a balance at exit.'},
   {k:'feePct',label:'Debt arrangement fee',unit:'% of loan',step:0.25,pct:true,tog:'debt',info:'One-time debt arrangement / structuring fee, % of loan, expensed at close.'},
-  {k:'exitMult',label:'Exit EV/EBITDA',unit:'x',step:0.5,tog:'exit',info:'EV/EBITDA multiple paid by a buyer at exit (going-concern sale). Data centre platform precedents cluster at 18-24x forward EBITDA — InterXion 18.6x, QTS 19.0x, CyrusOne 22.2x, Switch 22.9x, CoreSite 23.7x — with HPC/AI sites higher again. 15x is conservative for contracted colocation; 8x is conservative for GPU cash flows.'},
   {k:'disc',label:'Hurdle / discount rate',unit:'%',step:0.5,pct:true},
 ];
 
