@@ -439,7 +439,7 @@ const DEF={
   coloMW:2, coloRate:220, coloLeaseYears:10, coloEsc:0.04, // lease term equals the contract term, so nothing re-lets inside the model
   rentalDecline:0.12, utilStart:1.0, utilSteady:1.0, utilRamp:6, // wholesale take-or-pay: 100% billed
   powerKW:14, netPowerKW:1.4, pue:1.45, warrantyPct:0.05, warrantyInclYears:5, otherPct:0.035, residualPct:0.80, netResidualPct:0, tax:0.15, saudiPct:1.00, occupancy:0.80, rackKW:0,
-  gaPct:0.12, gaInfl:0.03, omPerMWYr:1500000, renewUplift:0,
+  gaPct:0.12, gaInfl:0.03, omPerMWYr:406000, refreshPerMWYr:358000, ovhPerMWYr:250000, renewUplift:0,
   facilityPerMW:12000000, facilityLife:25, psPerMW:424000, psPerGpu:4687.5, shellPct:0.25, usableIT:0.80, // psPerGpu = $2.4M per 512-GPU pod, expressed per card
   // IDC build roadmap — MW handed over, and the project month each tranche goes live.
   // Month 1 = Jan 2026, so month 12 = end of 2026 and the 2027 quarters land on 15/18/21/24.
@@ -523,7 +523,7 @@ const PRODUCTS=[
    // makes the first operating year the binding one every time, and at 120 it lands
    // under the covenant while every later year clears it comfortably. Stretching the
    // tenor fixes the shape without asking equity for another dollar.
-   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, omPerMWYr:1500000, gaInfl:0.05, debtPct:0.30, debtTenor:72}},
+   ov:{coloMW:10, coloRate:180, years:10, gaPct:0, siteRentPerMW:0, omPerMWYr:1500000, gaInfl:0.05, debtPct:0.30, debtTenor:72, omPerMWYr:406000, refreshPerMWYr:358000, ovhPerMWYr:250000}},
 ];
 let PROD='datahall';
 let CUST='domestic'; // VAT customer type: 'domestic' (15%) | 'export' (0%, zero-rated services)
@@ -594,7 +594,9 @@ const F_COST=[
   {k:'warrantyPct',gpuOnly:true,label:'Warranty & support',unit:'% capex/yr',step:0.5,pct:true,info:'OEM/vendor hardware support & spares, as % of server+network capex per year, charged only AFTER the bundled-warranty window below. 5% ≈ enterprise SLA; 3.5-4% self-maintenance.'},
   {k:'warrantyInclYears',gpuOnly:true,label:'Warranty included in price',unit:'yrs',step:1,info:'Years of OEM warranty bundled in the node purchase price — no separate support charge during this window, counted from each tranche&#39;s own delivery. Blackwell-generation systems ship with 5yr where the H100 generation shipped with 3yr; at a 5-year holding period that covers the kit for its whole life, and matters again at resale because cover still running is worth a premium in the secondary market. If the vendor charges for the extension, add it to the node price rather than here.'},
   {k:'otherPct',gpuOnly:true,label:'GPU &amp; Fabric O&amp;M',unit:'% capex/yr',step:0.5,pct:true,info:'Keeping the fleet and its fabric running: hardware break-fix labour and the RMA process, spares logistics, optics and cable replacement, cluster monitoring, firmware and node lifecycle, smart hands. Not the building — on-site engineers, NOC, M&amp;E and security belong to the landlord and are already bought with the hall rent above, so charging them here would pay for them twice. As % of live server and network capex per year, escalating at the O&amp;M inflation rate. Deliberately generous: 3.5% is $4,357 a card a year against a bottom-up build of $500-1,000, and warranty covers every part for the whole five-year life, so the difference is a conservative margin rather than a costing.'},
-  {k:'omPerMWYr',propcoOnly:true,label:'IDC O&M',unit:'$M / MW IT / yr',step:0.1,scale:1e6,info:'Operating cost per MW of IT capacity under management: on-site engineers, NOC, M&E maintenance, security, insurance, and corporate overhead. $1.5M all-in, ground rent included, which is why that line is zeroed rather than charged again. Escalates at the O&M inflation rate. Excludes electricity: the end user meters and pays power directly.'},
+  {k:'omPerMWYr',propcoOnly:true,label:'Facility O&amp;M',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'What it costs to run the hall each year, per MW: M&amp;E maintenance contracts $175k against a $100-250k industry band, on-site engineers and NOC $100k at roughly 0.7 people per MW, 24/7 security $50k, insurance $42k at 0.3% of build, consumables, water treatment and spares $30k, ground rent $9k. Excludes electricity, which the tenant meters, and excludes equipment replacement, which is capital and sits on its own line.'},
+  {k:'refreshPerMWYr',propcoOnly:true,label:'Equipment refresh',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Mid-life replacement, spread over the 25-year facility life. UPS batteries $144k — VRLA lasts 4 years so it is bought six times, and lithium at 8-15 years would roughly halve this; CRAH units $84k on a 12-year life; cooling towers $34k at 10 years; chiller compressor overhauls $30k; UPS electronics $24k; pumps, seals and valves $18k; BMS and DCIM refresh $18k; fire suppression $6k. Generators, switchgear, distribution boards and chilled-water piping run 25-30 years and are not in here — they outlive the contract.'},
+  {k:'ovhPerMWYr',propcoOnly:true,label:'Corporate overhead',unit:'$k / MW IT / yr',step:25,scale:1e3,info:'Head office for a landlord business: management, finance, legal, commercial. Charged per MW rather than as a share of revenue because that is what it scales with here. $250k/MW is about $30M a year across 120 MW.'},
   {k:'gaPct',gpuOnly:true,label:'Company opex + platform',unit:'% of revenue',step:1,pct:true,tog:'ga',info:'Corporate overhead — management, sales, admin, finance — plus the software platform: orchestration, inference serving, billing, R&amp;D. Site engineers, NOC and M&amp;E maintenance are not here; they sit in IDC O&amp;M. Neoclouds run leaner on an open-source stack than managed hyperscaler platforms.'},
   {k:'gaInfl',label:'Salary inflation',unit:'% / yr',step:0.5,pct:true,info:'Annual growth in every cost made of people: fleet and fabric upkeep, the console team, and corporate overhead. It deliberately does not touch the NVIDIA licence or the hall rent — those are bought at a stated price, and NVIDIA reprices its own list rather than Saudi wages doing it for them. Saudi CPI ran 2.03% in 2025 and 1.8-1.9% through 2026; engineers and operators cost more than headline CPI in a market building out this fast, so 5% carries several points of wage premium. Worth watching against whatever the rental price does: a contracted fleet earns the same each year while its payroll compounds, and the gap eats the margin from the inside.'},
   {section:'Tax'},
@@ -674,7 +676,7 @@ function compute(p,tog){
 
   const A=()=>new Array(N+1).fill(0);
   const build=A(),online=A(),capexS=A(),capexN=A(),capexF=A(),capex=A(),cumS=A(),cumN=A(),cumF=A(),util=A(),price=A(),bill=A(),rev=A(),revG=A(),revGm=A(),revC=A(),
-        elec=A(),warr=A(),oth=A(),othF=A(),intR=A(),ga=A(),rentx=A(),trans=A(),ar=A(),dwc=A(),feeA=A(),cashopex=A(),deprS=A(),deprN=A(),deprF=A(),depr=A(),ebitda=A(),ebit=A(),
+        elec=A(),warr=A(),oth=A(),refr=A(),ovh=A(),othF=A(),intR=A(),ga=A(),rentx=A(),trans=A(),ar=A(),dwc=A(),feeA=A(),cashopex=A(),deprS=A(),deprN=A(),deprF=A(),depr=A(),ebitda=A(),ebit=A(),
         intCap=A(),intPaid=A(),capexP=A(),deprP=A(),dDraw=A(),dRepay=A(),dInt=A(),dBal=A(),pbt=A(),tax=A(),ni=A(),cfo=A(),capexCf=A(),projFcf=A(),eqFcf=A(),cumEq=A();
   const totalCapex=(useGpu?target*p.serverPrice*(1+p.netPct):0)+facTotal+psTotal;
   const netCapex=useGpu?target*p.serverPrice*p.netPct:0;
@@ -730,14 +732,20 @@ function compute(p,tog){
     // A landlord's tracks megawatts of plant under management — tying it to build cost
     // would make the site more expensive to run purely because it cost more to build.
     const omInfl=Math.pow(1+p.gaInfl,Math.floor((m-1)/12));
+    // A landlord's cost splits three ways and they behave differently: wages and contracts
+    // recur, equipment replacement is capital spread over the 25-year life it buys, and
+    // head office is neither. One $1.5M/MW line hid all three inside a number nobody could
+    // check against anything.
     oth[m]=useGpu?(cumS[m]+cumN[m]+cumF[m])*p.otherPct/12*omInfl
                  :build[m]*(p.omPerMWYr||0)/12*omInfl;
+    refr[m]=useGpu?0:build[m]*(p.refreshPerMWYr||0)/12*omInfl;
+    ovh[m] =useGpu?0:build[m]*(p.ovhPerMWYr||0)/12*omInfl;
     othF[m]=useGpu?cumF[m]*p.otherPct/12*omInfl:oth[m];
     intR[m]=useFac?gpuMW*1000*p.coloRate*(online[m]/target)*Math.pow(1+p.coloEsc,Math.floor((m-1)/12)):0;
     ga[m]=useGA?rev[m]*p.gaPct:0; // company opex + platform, scales with revenue
     rentx[m]=useFac?(mwIT*p.siteRentPerMW/12):(online[m]*pkEff*p.coloPerKWMo);
     trans[m]=online[m]>0?p.transitMo:0;
-    cashopex[m]=elec[m]+warr[m]+oth[m]+ga[m]+rentx[m]+trans[m];
+    cashopex[m]=elec[m]+warr[m]+oth[m]+refr[m]+ovh[m]+ga[m]+rentx[m]+trans[m];
     ar[m]=useWC?rev[m]*p.arDays/30.4:0;
     dwc[m]=ar[m]-ar[m-1];
     deprS[m]=Math.min(cumS[m]*(1-p.residualPct)/(p.years*12), Math.max(0,cumS[m]*(1-p.residualPct)-accDeprS)); accDeprS+=deprS[m];
@@ -827,7 +835,7 @@ function compute(p,tog){
     const a=(y-1)*12+1,b=y*12; const sum=arr=>{let s=0;for(let m=a;m<=b;m++)s+=arr[m];return s;};
     const eb=sum(ebitda),intr=sum(intPaid),prin=sum(dRepay),cashtax=sum(tax),dw=sum(dwc),fe=sum(feeA),rn=sum(rentx);
     const cfads=eb-cashtax-dw, ds=intr+prin;
-    yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
+    yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),refr:sum(refr),ovh:sum(ovh),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
       depr:sum(depr),deprP:sum(deprP),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
       capex:-sum(capexCf),capexP:sum(capexP),draw:sum(dDraw),repay:prin,fcfe:sum(eqFcf),
       debtEnd:dBal[b],dscr:ds>1?cfads/ds:null,icr:intr>1?eb/intr:null,
@@ -869,7 +877,7 @@ function compute(p,tog){
         dev:(psTotal/(p.facilityLife*12))/kW,
         rent:(coloMW*p.siteRentPerMW/12)/kW,
         elec:0,
-        oth:(coloMW*(p.omPerMWYr||0)/12)/kW,
+        oth:(coloMW*((p.omPerMWYr||0)+(p.refreshPerMWYr||0)+(p.ovhPerMWYr||0))/12)/kW,
         ga:useGA?p.gaPct*p.coloRate:0};
     costBasis=cb.depr+cb.dev+cb.rent+cb.oth+cb.ga;
     unitPrice=p.coloRate; unitStr='/kW\u00b7mo'; rentMo=p.coloRate;
@@ -1258,7 +1266,9 @@ function render(){
       ${o.useGpu?plRow('Electricity',o.yrs.map(y=>-y.elec)):''}
       ${o.useGpu&&o.yrs.some(y=>y.warr>0)?plRow('Warranty & support',o.yrs.map(y=>-y.warr)):''}
       ${o.yrs.some(y=>y.trans>0)?plRow('Network transit',o.yrs.map(y=>-y.trans)):''}
-      ${plRow(o.useGpu?'GPU & Fabric O&M':'IDC O&M',o.yrs.map(y=>-y.oth))}
+      ${plRow(o.useGpu?'GPU & Fabric O&M':'Facility O&M',o.yrs.map(y=>-y.oth))}
+      ${o.yrs.some(y=>y.refr>0)?plRow('Equipment refresh',o.yrs.map(y=>-y.refr)):''}
+      ${o.yrs.some(y=>y.ovh>0)?plRow('Corporate overhead',o.yrs.map(y=>-y.ovh)):''}
       ${o.yrs.some(y=>y.rent>0)?plRow(o.useFac?'Site ground rent':'Colocation fees',o.yrs.map(y=>-y.rent)):''}
       ${o.useGA&&o.yrs.some(y=>y.ga>0)?plRow('Corporate G&A',o.yrs.map(y=>-y.ga)):''}
       ${plRow('EBITDA',o.yrs.map(y=>y.ebitda),true)}
