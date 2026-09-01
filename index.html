@@ -659,6 +659,14 @@ function compute(p,tog){
   // already states when capacity goes live, so the generic build lead time does not apply.
   const road=(!useGpu && Array.isArray(p.roadmap) && p.roadmap.length) ? p.roadmap : null;
   const roadMW=road?road.reduce((t,r)=>t+Math.max(0,r.mw||0),0):0;
+  // Development fees are quoted per MW and the MW arrive on a roadmap, so the fee follows
+  // them. Charging all $50.9M in month 1 paid to develop 120 MW in a year that 4 of them
+  // were built. Each tranche carries its share on its own handover month and amortises it
+  // over the facility life from there.
+  const facFeeTr=(useFac&&road&&roadMW>0)
+    ? road.map(r=>({m:Math.max(1,Math.round(r.m||1)),
+                    amt:psFac*Math.max(0,r.mw||0)/roadMW}))
+    : [];
   const shellTot=road?facTotal*Math.max(0,Math.min(1,p.shellPct||0)):0;
   const fitTot=road?facTotal-shellTot:0;
   const shellEnd=road?Math.max(1,Math.round(road[0].m||1)):1; // shell completes with the first tranche
@@ -698,7 +706,9 @@ function compute(p,tog){
       });
       capexF[m]=f;
     } else capexF[m]=(build[m]-build[m-1])/Math.max(target,1)*facTotal;
-    capexP[m]=(m===1)?psTotal:0; // one-time, incurred at kick-off before construction
+    capexP[m]=(facFeeTr.length ? facFeeTr.reduce((t,f)=>t+(f.m===m?f.amt:0),0)
+                                : ((m===1)?psFac:0))
+              + ((m===1)?psGpu:0); // facility fees with the MW they develop; fleet fees at kick-off
     capex[m]=capexS[m]+capexN[m]+capexF[m]+capexP[m];
     cumS[m]=cumS[m-1]+capexS[m];
     cumN[m]=cumN[m-1]+capexN[m];
@@ -736,7 +746,10 @@ function compute(p,tog){
     // the two fee scopes amortise on their own asset's life: the hall's over the
     // facility life, the fleet's over the hold. Gating both on useFac left a leased
     // deployment fee capitalised in cash and never charged to the P&L at all.
-    const dPF=useFac?Math.min(psFac/(p.facilityLife*12), Math.max(0,psFac-accDeprP)):0; accDeprP+=dPF;
+    const facFeeLife=Math.max(1,Math.round(p.facilityLife*12));
+    const dPF=!useFac?0:(facFeeTr.length
+      ? facFeeTr.reduce((t,f)=>t+((m>=f.m&&m<f.m+facFeeLife)?f.amt/facFeeLife:0),0)
+      : Math.min(psFac/facFeeLife, Math.max(0,psFac-accDeprP))); accDeprP+=dPF;
     const dPG=useGpu?Math.min(psGpu/((p.gpuLifeYears||p.years)*12), Math.max(0,psGpu-accDeprPG)):0; accDeprPG+=dPG;
     deprP[m]=dPF+dPG;
     depr[m]=deprS[m]+deprN[m]+deprF[m]+deprP[m];
@@ -816,7 +829,7 @@ function compute(p,tog){
     const cfads=eb-cashtax-dw, ds=intr+prin;
     yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
       depr:sum(depr),deprP:sum(deprP),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
-      capex:-sum(capexCf),draw:sum(dDraw),repay:prin,fcfe:sum(eqFcf),
+      capex:-sum(capexCf),capexP:sum(capexP),draw:sum(dDraw),repay:prin,fcfe:sum(eqFcf),
       debtEnd:dBal[b],dscr:ds>1?cfads/ds:null,icr:intr>1?eb/intr:null,
       nde:eb!==0?dBal[b]/eb:null, price:price[b], util:util[b], online:online[b]});
   }
@@ -1269,7 +1282,7 @@ function render(){
     <table><thead><tr><th>$</th>${o.yrs.map(y=>`<th>Y${y.y}</th>`).join('')}<th style="color:var(--power)">Total</th></tr></thead><tbody>
       ${plRow('Cash from operations',o.yrs.map(y=>y.ni+y.depr-y.dwc))}
       ${plRow('CAPEX',o.yrs.map(y=>-y.capex))}
-      ${o.psTotal>0?plRow('  — of which deployment fees',o.yrs.map((y,i)=>i===0?-o.psTotal:0)):''}
+      ${o.psTotal>0?plRow('  — of which deployment fees',o.yrs.map(y=>-(y.capexP||0))):''}
       ${T.debt?plRow('Debt drawdown',o.yrs.map(y=>y.draw)):''}
       ${T.debt?plRow('Principal repayments',o.yrs.map(y=>-y.repay)):''}
       ${plRow('Free cash flow to equity',o.yrs.map(y=>y.fcfe),true)}
