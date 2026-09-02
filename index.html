@@ -850,7 +850,7 @@ function compute(p,tog){
     const cfads=eb-cashtax-dw, ds=intr+prin;
     yrs.push({y,rev:sum(rev),revG:sum(revG),revC:sum(revC),othF:sum(othF),intR:sum(intR),trans:sum(trans),elec:sum(elec),warr:sum(warr),oth:sum(oth),refr:sum(refr),ovh:sum(ovh),ga:sum(ga),rent:rn,dwc:dw,fee:fe,ebitda:eb,
       depr:sum(depr),deprP:sum(deprP),ebit:sum(ebit),interest:intr,tax:cashtax,ni:sum(ni),
-      capex:-sum(capexCf),capexP:sum(capexP),draw:sum(dDraw),repay:prin,fcfe:sum(eqFcf),
+      capex:-sum(capexCf),capexP:sum(capexP),draw:sum(dDraw),repay:prin,intCap:sum(intCap),fcfe:sum(eqFcf),
       debtEnd:dBal[b],dscr:ds>1?cfads/ds:null,icr:intr>1?eb/intr:null,
       nde:eb!==0?dBal[b]/eb:null, price:price[b], util:util[b], online:online[b]});
   }
@@ -1289,6 +1289,7 @@ function render(){
       ${o.psTotal>0&&o.yrs.some(y=>y.deprP>0)?plRow('  — of which deployment fees',o.yrs.map(y=>-y.deprP)):''}
       ${plRow('EBIT',o.yrs.map(y=>y.ebit))}
       ${T.debt?plRow('Interest',o.yrs.map(y=>-y.interest)):''}
+      ${T.debt&&o.yrs.some(y=>y.intCap>0)?plRow('  — capitalised during construction',o.yrs.map(y=>-y.intCap)):''}
       ${(T.debt&&S.feePct>0)?plRow('Arrangement fee',o.yrs.map(y=>-y.fee)):''}
       ${plRow('Tax',o.yrs.map(y=>-y.tax))}
       ${plRow('Net profit',o.yrs.map(y=>y.ni),true)}
@@ -1339,7 +1340,7 @@ function render(){
   </div>
 
   <div class="foot">
-    Monthly engine over ${o.N} months. ${o.useGpu?`Two capital layers: servers depreciate to ${(S.residualPct*100).toFixed(0)}% residual over the hold; facility over ${S.facilityLife} yrs, exiting at net book value.`:`The facility depreciates over ${S.facilityLife} yrs and exits at net book value; capacity arrives on the build roadmap, with the shell built once for the whole site and fit-out following each tranche.`} One-time development &amp; professional fees are capitalised at kick-off rather than expensed, so they appear in CAPEX in the year they are paid and in depreciation thereafter, never as a cost line of their own — the CAPEX breakout above names them because on a GPU fleet they are the majority of first-year spend. They are excluded from the O&amp;M base. ${o.useWC?`Working capital holds ${S.arDays} days of revenue in receivables${o.useExit?'':' (released at liquidation exit)'}. `:''}${T.debt?`Debt drawn pro-rata with capex, equal-principal amortization from ${o.useGpu?'the end of the install ramp':'first capacity handover'}; ${(S.feePct*100).toFixed(2)}% arrangement fee expensed at kick-off. `:''}Exit: ${o.useExit?`going-concern at ${S.exitMult}x LTM EBITDA (buyer assumes working capital)`:(o.useGpu?'liquidation — hardware residual + facility NBV':'liquidation — facility net book value')}. Equity IRR is levered FCFE net of exit debt. Sensitivity and scenario cells rerun the full engine. Decision tool, not investment advice.
+    Monthly engine over ${o.N} months. ${o.useGpu?`Two capital layers: servers depreciate to ${(S.residualPct*100).toFixed(0)}% residual over the hold; facility over ${S.facilityLife} yrs, exiting at net book value.`:`The facility depreciates over ${S.facilityLife} yrs and exits at net book value; capacity arrives on the build roadmap, with the shell built once for the whole site and fit-out following each tranche.`} One-time development &amp; professional fees are capitalised at kick-off rather than expensed, so they appear in CAPEX in the year they are paid and in depreciation thereafter, never as a cost line of their own — the CAPEX breakout above names them because on a GPU fleet they are the majority of first-year spend. They are excluded from the O&amp;M base. ${o.useWC?`Working capital holds ${S.arDays} days of revenue in receivables${o.useExit?'':' (released at liquidation exit)'}. `:''}${T.debt?`Debt drawn pro-rata with capex; interest before the last tranche lands is capitalised into the balance rather than paid, which is why the interest line reads zero through construction and why repayments exceed the amount drawn. Equal-principal amortization from ${o.useGpu?'the end of the install ramp':'the last capacity handover'}; ${(S.feePct*100).toFixed(2)}% arrangement fee expensed at kick-off. `:''}Exit: ${o.useExit?`going-concern at ${S.exitMult}x LTM EBITDA (buyer assumes working capital)`:(o.useGpu?'liquidation — hardware residual + facility NBV':'liquidation — facility net book value')}. Equity IRR is levered FCFE net of exit debt. Sensitivity and scenario cells rerun the full engine. Decision tool, not investment advice.
   </div>`;
   document.getElementById('rentNote').textContent='start · ≈'+money(o.rentMo)+'/GPU/mo';
   document.getElementById('srvNote').textContent=S.servers.toLocaleString()+' × 8-GPU nodes · '+o.gpuMW.toFixed(2)+' MW IT';
